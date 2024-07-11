@@ -26,7 +26,8 @@ cl /c /MD -DSFML_STATIC /Fo"build/" ^
 /I "_modules\physic\includes" ^
 /I "includes" ^
 main.cpp ^
-editor_gui.cpp
+editor_gui.cpp ^
+logic.cpp
 
 :: -----------------------------------------------------|
 :: Link to dependencies
@@ -41,6 +42,7 @@ echo on
 cl /MD -DSFML_STATIC /Fe: _main.exe ^
 _modules\dependencies.lib ^
 build\main.obj ^
-build\editor_gui.obj
+build\editor_gui.obj ^
+build\logic.obj
 
 
