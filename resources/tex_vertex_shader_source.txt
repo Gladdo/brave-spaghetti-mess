@@ -1,0 +1,20 @@
+#version 330
+uniform mat4 MVP;
+uniform int outline;
+
+in vec2 vTexCoord;
+in vec2 vPos;
+
+out vec2 texCoord;
+out vec2 fragPos;
+
+void main()
+{
+
+    float border_width = 0.1f;
+    float outline_scale = 1 + border_width * outline; 
+
+    gl_Position = MVP * vec4(vPos * outline_scale, 0.0, 1.0);
+    texCoord = vTexCoord;
+    fragPos = vPos * outline_scale;
+}
