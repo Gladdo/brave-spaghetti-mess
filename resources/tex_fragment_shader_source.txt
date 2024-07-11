@@ -7,6 +7,12 @@ in vec2 fragPos;
 uniform sampler2D texUnit;
 
 void main()
+{
+	FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+
+}
+
+void oldmain()
 {	
 	if( fragPos.y > -0.5 &&  fragPos.y < 0.5 && fragPos.x > -0.5 && fragPos.x < 0.5){
 		FragColor = texture(texUnit, texCoord);

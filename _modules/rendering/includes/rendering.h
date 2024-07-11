@@ -110,9 +110,9 @@ namespace rendering{
         // Dati per gestire la mesh quadrata con cui lo shader renderizza
 
         struct gpu_mesh_data_buffers{
-            GLuint mesh_vertexes_data_buffer_id;        // Id del buffer sulla GPU contenente i vertici della mesh su cui viene poi renderizzata la texture
-            GLuint mesh_vertexes_layout_buffer_id;      // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
-            int mesh_vertex_number;                     // Numero di vertici nella mesh
+            GLuint mesh_vertexes_data_buffer_id;                    // Id del buffer sulla GPU contenente i vertici della mesh su cui viene poi renderizzata la texture
+            GLuint mesh_vertex_attribute_pointers_buffer_id;        // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
+            int mesh_vertex_number;                                 // Numero di vertici nella mesh
         };
 
         extern gpu_mesh_data_buffers quad_mesh_data_buffers;
@@ -137,7 +137,7 @@ namespace rendering{
 
         void set_uniform_texture_id(GLuint texture_object_id);
         void set_uniform_mvp(GLfloat mvp[16]);
-        void set_Uniform_outline(bool outline);
+        void set_uniform_outline(bool outline);
 
     }
 
@@ -219,18 +219,18 @@ namespace rendering{
         // -------------------------------------------------------------------------|
         // Framebuffer parameters 
 
-        GLuint framebuffer_obj_id;      // Id del framebuffer contenente gli attachment
-        GLuint texture_obj_id;          // Id della texture su cui viene salvato il colore dei pixel
-        int tex_pixel_width = 800;      // width della texture su cui viene salvato il colore dei pixel
-        int tex_pixel_height = 600;     // height della texture su cui viene salvato il colore dei pixel
+        extern GLuint framebuffer_obj_id;      // Id del framebuffer contenente gli attachment
+        extern GLuint texture_obj_id;          // Id della texture su cui viene salvato il colore dei pixel
+        extern int texture_pixel_width;      // width della texture su cui viene salvato il colore dei pixel
+        extern int texture_pixel_height;     // height della texture su cui viene salvato il colore dei pixel
 
         // -------------------------------------------------------------------------|
         // Functions to manage and utilize the framebuffer
 
         void init();
-        void start_rendering_on_texutre();                      // Dice ad OpenGL di iniziare a renderizzare sulla texture di output configurata
-        void stop_rendering_on_texutre();                       // Dice ad OpenGL di tornare a renderizzare nella window dell'applicazione
-        void SetTargetTextureSize(float width, float height);   // Imposta la grandezza dell'immagine (texture) su cui salvare l'output del rendering
+        void activate();                                        // Dice ad OpenGL di iniziare a renderizzare sulla texture di output configurata
+        void deactivate();                                      // Dice ad OpenGL di tornare a renderizzare nella window dell'applicazione
+        void set_texture_size(float width, float height);       // Imposta la grandezza dell'immagine (texture) su cui salvare l'output del rendering
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -242,5 +242,43 @@ namespace rendering{
     GLuint opengl_create_texture_buffer(unsigned char* img_data, int img_width, int img_height );
     GLFWwindow* opengl_glfw_initialization();
     void opengl_load_texture_on_texture_unit(GLuint texture_id, GLenum texture_unit);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                              Utility Functions
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    struct Viewport{
+        int pixel_width;
+        int pixel_height;
+        float ratio;
+    };
+
+    struct Camera{
+        float world_x_pos;
+        float world_y_pos;
+        float world_z_angle;
+        float world_width_fov;
+        float world_height_fov;
+        float world_near_clip;
+        float world_far_clip;
+    };
+
+    extern Viewport application_window_viewport;
+    extern Viewport game_scene_viewport;    // Specifica la grandezza, della regione di monitor, dove viene visualizzata la scena di gioco 
+    extern Camera camera;
+
+    void calculate_mvp
+    ( 
+        float out_mvp [16], 
+        const float& world_x_size,
+        const float& world_y_size,
+        const float& world_x_pos, 
+        const float& world_y_pos, 
+        const float& world_z_angle
+    );
+
+
+
+
 }
 

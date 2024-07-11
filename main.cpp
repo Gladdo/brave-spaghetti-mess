@@ -4,87 +4,32 @@
 
 #include "rendering.h"
 #include "resource_load_functions.h"
+#include "editor_gui.h"
 
 #include <vector>
 #include <iostream>
 
 int main(void){
-
     
     ///////////////////////////////////////////////////////////////////////////////////////
     // Initialize Opengl window
 
     GLFWwindow* window;
-    window = opengl_glfw_initialization();
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////
-    // Initialize Texture Shader
-
-    // Load shader code from file to RAM
-    std::string tex_vertex_shader_source = load_multiline_txt_to_string("resources/tex_vertex_shader_source.txt");
-    std::string tex_fragment_shader_source = load_multiline_txt_to_string("resources/tex_fragment_shader_source.txt");
-
-    GLuint shader_program_id = opengl_create_shader_program(tex_vertex_shader_source.c_str(), tex_fragment_shader_source.c_str());
-
-    // Carica l'id delle variabili uniform del programma (per poterle successivamente accedere):
-    GLint tex_unit_location = glGetUniformLocation(shader_program_id, "texUnit");
-    GLint mvp_location = glGetUniformLocation(shader_program_id, "MVP");
-    GLint outline_location = glGetUniformLocation(shader_program_id, "outline");
-
-    // Carica l'id delle variabili attributo del programma:
-    GLint vpos_location = glGetAttribLocation(shader_program_id, "vPos");
-    GLint vuv_location = glGetAttribLocation(shader_program_id, "vTexCoord");
-
-    // Load vertex data from file to RAM
-    std::vector<float> tex_vertex_data = load_txt_to_float_vector("resources/tex_vertex_data.txt");
-
-    // Se il numero di valori nell'array float non è un multiplo del size dei vertici, assert il missmatch
-    if (vertex_array_length%vertex_size != 0){
-        std::cerr << "Error: Mismatch between shader attributes and vertex size in texture_shader_configuration" << std::endl << std::flush;
-    }
-
-    // Imposta il numero di vertici nei dati della mesh
-    quad_mesh.vertexes_number = vertex_array_length/vertex_size;
-
-    // Carica i dati sulla GPU ---------------------------------------------|
-
-    // Binda il VAO; in questo modo il VBO successivamente bindato e le sue configurazioni vengono associate a questo VAO
-    glGenVertexArrays(1, &(quad_mesh.vao_id));
-    glBindVertexArray(quad_mesh.vao_id);
-
-    // Genera il VBO, bindalo e caricaci i dati (trasferiscili da RAM a GPU)
-    glGenBuffers(1, &(quad_mesh.vbo_id));
-    glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo_id);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*vertex_array_length, vertex_array_data, GL_STATIC_DRAW);
-
-    // Configura il VAO: lega VBO e shader -------------------------------|
-    // Specifica nel VAO come leggere i dati nel VBO e a quali attributi dello shader legarli; il vao è poi bindato when
-    // the shader needs to use vertex data
-
-    RenderingShader_QuadTextureShader& shader = RenderingShader_QuadTextureShader::get_instance();
-
-    // Attiva/inizializza l'attributo vPos dello shader
-    glEnableVertexAttribArray(shader.vpos_location);
-    
-    // Lega l'attributo vPos dello shader ai primi due valori di ciascun vertice nel VBO
-    glVertexAttribPointer(shader.vpos_location, attrib_one_size, GL_FLOAT, GL_FALSE, sizeof(float)*vertex_size, (void*) 0);
-    
-    // Attiva/inizializza l'attributo vTexCoord dello shader
-    glEnableVertexAttribArray(shader.vuv_location);
-
-    // Lega l'attributo vTexCoord dello shader agli ultimi due valori di ciascun vertice nel VBO
-    glVertexAttribPointer(shader.vuv_location, attrib_two_size, GL_FLOAT, GL_FALSE, sizeof(float)*vertex_size, (void*) (sizeof(float) * attrib_one_size));
-
-    // Unbinda il VAO così che successive call al contesto di OpenGL non vadano implicitamente a modificarlo
-    glBindVertexArray(0);
+    window = rendering::opengl_glfw_initialization();
 
     ///////////////////////////////////////////////////////////////////////////////////////
-    // Initialize vertex data
+    // Initialize Rendering 
 
+    rendering::quad_texture_shader::init();
+    rendering::scene_image_framebuffer::init();
 
     ///////////////////////////////////////////////////////////////////////////////////////
-    // Initialize Texture
+    // Initialize GUI
+
+    gui::init(window);
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    // Initialize Wall Texture
 
     int img_width, img_height;
 
@@ -92,7 +37,135 @@ int main(void){
     std::vector<unsigned char> image_data = load_image_to_unsigned_char_vector("resources/wall.jpg", &img_width, &img_height);
     
     // Create a texture object on the GPU and load image data to it
-    GLuint wall_texture_id = opengl_create_texture_buffer(image_data.data(), img_width, img_height);
-   
+    GLuint wall_texture_id = rendering::opengl_create_texture_buffer(image_data.data(), img_width, img_height);
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    // Quad Texture Shader Uniform configuration
+
+    float mvp [16];
+    bool outline = false;
+
+    struct box_data{
+        float world_x_scale = 1;
+        float world_y_scale = 1;
+        float world_x_pos = 0;
+        float world_y_pos = 0;
+        float world_z_angle = 0;
+        
+    } box_data;
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    // Initialize Rendering Camera properties
+
+    rendering::camera.world_x_pos = 0;
+    rendering::camera.world_y_pos = 0;
+    rendering::camera.world_z_angle = 0;
+    rendering::camera.world_width_fov = 0;  // derived quantity
+    rendering::camera.world_height_fov = 10;
+    rendering::camera.world_near_clip = 0;
+    rendering::camera.world_far_clip = 20;
+    
+    while (!glfwWindowShouldClose(window))
+    { 
+        
+        ///////////////////////////////////////////////////////////////////////////////////////
+        // Setup the game scene framebuffer
+
+        // Ridimensiona la texutre in cui è renderizzata la scena in base alla dimensione dell'elemento
+        // Image della gui in cui verrà successivamente applicata.
+        rendering::scene_image_framebuffer::set_texture_size(
+            gui::parameters.scene_window.inner_img_pixel_width,
+            gui::parameters.scene_window.inner_img_pixel_height
+        );
+
+        rendering::scene_image_framebuffer::activate();
+
+        // Setuppa i parametri del viewport della scena di gioco
+        rendering::game_scene_viewport.pixel_width = gui::parameters.scene_window.inner_img_pixel_width;
+        rendering::game_scene_viewport.pixel_height = gui::parameters.scene_window.inner_img_pixel_height;
+        rendering::game_scene_viewport.ratio =
+            rendering::game_scene_viewport.pixel_width /
+            ((float) rendering::game_scene_viewport.pixel_height);
+
+        // Specifica ad opengl la dimensione del canvas dove renderizzare
+        // (Sostanzialmente si specifica come associare i pixel del monitor in cui si visualizza il gioco
+        // con i pixel del framebuffer in cui è contenuto l'output delle operazioni di rendering) 
+        glViewport(
+            0,              
+            0, 
+            rendering::game_scene_viewport.pixel_width, 
+            rendering::application_window_viewport.pixel_height);
+
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+        // Update the rendering Camera parameters
+
+        // Imposta la width della camera di gioco in modo che ciò che cattura nel game world rifletta il rapporto con cui viene mostrata sullo schermo
+        rendering::camera.world_width_fov = rendering::game_scene_viewport.ratio * rendering::camera.world_height_fov;
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+        // Setup data for rendering
+
+        rendering::calculate_mvp(mvp, box_data.world_x_scale, box_data.world_y_scale, box_data.world_x_pos, box_data.world_y_pos, box_data.world_z_angle);
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+        // Render with Quad Texture Shader on the current active framebuffer
+
+        glUseProgram(rendering::quad_texture_shader::program_id);
+        glBindVertexArray(rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
+
+        rendering::quad_texture_shader::set_uniform_texture_id(wall_texture_id);
+        rendering::quad_texture_shader::set_uniform_outline(outline);
+        rendering::quad_texture_shader::set_uniform_mvp(mvp);
+
+        glDrawArrays(GL_TRIANGLES, 0, rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_number);
+
+        glUseProgram(0);
+
+        rendering::scene_image_framebuffer::deactivate();
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+        // Setup the application Framebuffer
+        
+        // Scrivi in game_scene_viewport la grandezza della finestra dell'applicazione
+        glfwGetFramebufferSize(
+            window, 
+            &rendering::application_window_viewport.pixel_width, 
+            &rendering::application_window_viewport.pixel_height
+        );
+
+        rendering::application_window_viewport.ratio = 
+            rendering::application_window_viewport.pixel_width / 
+            ((float) rendering::application_window_viewport.pixel_height);
+
+        // Specifica ad opengl la grandezza della finestra dove renderizzare
+        glViewport(
+            0, 
+            0, 
+            rendering::application_window_viewport.pixel_width, 
+            rendering::application_window_viewport.pixel_height);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+        // Render the GUI in the application Framebuffer
+
+        gui::render_gui();
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+        // Flush application window rendering changes
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    gui::destroy();
+
+    glfwDestroyWindow(window);
+ 
+    glfwTerminate();
+    exit(EXIT_SUCCESS);
+
+    return 0;
 
 }

@@ -6,13 +6,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <assert.h>
+
+#include "linmath.h"
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                          Quad Texture Shader
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// -------------------------------------------------------------------------|
+// Quad Texture Shader data
+
 // Containers for ids containing quad mesh data in the GPU
-rendering::quad_texture_shader::gpu_mesh_data_buffers quad_mesh_data_buffers;
+rendering::quad_texture_shader::gpu_mesh_data_buffers rendering::quad_texture_shader::quad_mesh_data_buffers;
 
 // Elements Ids 
 GLuint rendering::quad_texture_shader::program_id;                          // Id dello shader program presente sulla GPU
@@ -25,11 +32,14 @@ GLint rendering::quad_texture_shader::outline_location;                     // I
 // =========================================================================|
 //                                  init
 // =========================================================================|
-// All'inizializzazione è creato un buffer (vbo) sulla memoria GPU su quale viene caricato
-// i vertici di un quad (specificati nel file resources/tex_vertex_data.txt).
-// Successivamente è creato un buffer vao che specifica:
+
+// Description:
+// Crea un buffer (vbo) sulla memoria GPU e ci carica i vertici di un quad 
+// (specificati nel file resources/tex_vertex_data.txt).
+// Successivamente è creato e configurato un buffer vao che specifica:
 //      - l'id del vbo da cui leggere i dati
-//      - Come interpretare i dati nel vbo
+//      - Come interpretare i dati nel vbo e come si legano all'input dello shader
+//
 void rendering::quad_texture_shader::init(){
 
     // -------------------------------------------------------------------------|
@@ -50,20 +60,21 @@ void rendering::quad_texture_shader::init(){
     // Setup vertex data
 
     // Load vertex data from file to RAM
-    std::vector<float> tex_vertex_data = load_txt_to_float_vector("resources/tex_vertex_data.txt");
+    std::vector<float> quad_vertex_data = load_txt_to_float_vector("resources/quad_vertex_data.txt");
 
     // Load vertex data on GPU and configure vertex shader pointers (VAO): 
-    init_quad_mesh_buffers( tex_vertex_data.size(), tex_vertex_data.data() );
+    init_quad_mesh_buffers( quad_vertex_data.size(), quad_vertex_data.data() );
 }
 
 // =========================================================================|
 //                          init_quad_mesh_buffers
 // =========================================================================|
+
 void rendering::quad_texture_shader::init_quad_mesh_buffers(int vertex_array_length, const float* vertex_array_data){
 
     // Crea riferimenti ai side effects di questa funzione
     GLuint& vbo_id = quad_mesh_data_buffers.mesh_vertexes_data_buffer_id;
-    GLuint& vao_id = quad_mesh_data_buffers.mesh_vertexes_layout_buffer_id;
+    GLuint& vao_id = quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id;
     int& vertex_number = quad_mesh_data_buffers.mesh_vertex_number;
 
     // Numero di valori per ciascun vertice; dipende da quanti valori prende in input il vertex shader
@@ -94,6 +105,8 @@ void rendering::quad_texture_shader::init_quad_mesh_buffers(int vertex_array_len
     // Bind the mesh VAO to the quad texture shader; specifica nel VAO come lo shader deve legarli ai suoi input.
     // Questo VAO è poi bindato quando lo shader viene eseguito sui dati della mesh
 
+    glUseProgram(program_id);
+
     // Id delle variabili attributo vTexCoord e VPos del vertexshader
     GLint vpos_location, vuv_location;
 
@@ -117,15 +130,20 @@ void rendering::quad_texture_shader::init_quad_mesh_buffers(int vertex_array_len
     // Lega l'attributo vTexCoord dello shader agli ultimi due valori di ciascun vertice nel VBO
     glVertexAttribPointer(vuv_location, attrib_uv_size, GL_FLOAT, GL_FALSE, sizeof(float)*vertex_size, (void*) (sizeof(float) * attrib_pos_size));
 
+    glUseProgram(0);
+
     // Unbinda il VAO così che successive call al contesto di OpenGL non vadano implicitamente a modificarlo
     glBindVertexArray(0);
 }
 
 // =========================================================================|
-//                          SetupTextureUniform
+//                          set_uniform_texture_id
 // =========================================================================|
-// |----------------- SetupTexture -----------------|
-// Imposta la pipeline a fare il sample dal texture object di id texture_object_id
+
+// Description:
+// Carica il texture_object di id texture_object_id sulla texture unit GL_TEXTURE1 
+// e imposta lo shader a fare il sample da tale texture unit
+//
 void rendering::quad_texture_shader::set_uniform_texture_id(GLuint texture_object_id){
 
     // Carica il texture_object di id texture_object_id sulla texture unit GL_TEXTURE1
@@ -136,19 +154,123 @@ void rendering::quad_texture_shader::set_uniform_texture_id(GLuint texture_objec
 }
 
 // =========================================================================|
-//                          SetupMVPUniform
+//                          set_uniform_mvp
 // =========================================================================|
-// |----------------- SetupMVP -----------------|
+
 void rendering::quad_texture_shader::set_uniform_mvp(GLfloat mvp[16]){
     glUniformMatrix4fv(mvp_location, 1, GL_FALSE, mvp);
 }
 
 // =========================================================================|
-//                          SetupOutlineUniform
+//                          set_Uniform_outline
 // =========================================================================|
-// |----------------- SetupOutline -----------------|
-void rendering::quad_texture_shader::set_Uniform_outline(bool outline){
+
+void rendering::quad_texture_shader::set_uniform_outline(bool outline){
     glUniform1i(outline_location, outline);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                      Scene Image Framebuffer
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// -------------------------------------------------------------------------|
+// Framebuffer parameters 
+
+GLuint rendering::scene_image_framebuffer::framebuffer_obj_id;          // Id del framebuffer contenente gli attachment
+GLuint rendering::scene_image_framebuffer::texture_obj_id;              // Id della texture su cui viene salvato il colore dei pixel
+int rendering::scene_image_framebuffer::texture_pixel_width = 800;      // width della texture su cui viene salvato il colore dei pixel
+int rendering::scene_image_framebuffer::texture_pixel_height = 600;     // height della texture su cui viene salvato il colore dei pixel
+
+// =========================================================================|
+//                                  init
+// =========================================================================|
+
+// Description:
+// Crea un framebuffer object sulla GPU, quindi crea un texture buffer object
+// che poi configura come color attachment per il framebuffer. 
+void rendering::scene_image_framebuffer::init(){
+
+    // Create the framebuffer object
+    glGenFramebuffers(1, &framebuffer_obj_id);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_obj_id); 
+
+    // Create the texture buffer object
+    glGenTextures(1, &texture_obj_id);
+
+    // Bind the texture buffer object and configure its parameters    
+    glBindTexture(GL_TEXTURE_2D, texture_obj_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texture_pixel_width, texture_pixel_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+
+    // Attach the texture to the framebuffer (tells opengl that the texture is the canvas on which the 
+    // frame buffer will store pixel color data ).
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_obj_id, 0);
+
+    // Check if framebuffer is successfully created, otherwise assert
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+        assert(false);
+    }
+
+    // Unbinda il framebuffer object e ritorna al framebuffer di default
+    // (default frame buffer: quello che renderizza nella window dell'applicazione)
+    glBindFramebuffer(GL_FRAMEBUFFER, 0); 
+
+    // Unbinda la texture dalla currently bound texture
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+}
+
+// =========================================================================|
+//                            set_texture_size
+// =========================================================================|
+
+void rendering::scene_image_framebuffer::set_texture_size(float width, float height){
+
+    // Imposta i parametri della classe
+    texture_pixel_width = width;
+    texture_pixel_height = height;
+
+    // Attiva il framebuffer e l'oggetto texture utilizzati dalla classe
+    // In questo modo le seguenti configurazioni avranno effetto su questi.
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_obj_id);
+    glBindTexture(GL_TEXTURE_2D, texture_obj_id);
+
+    // Modifica i parametri del buffer della texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texture_pixel_width, texture_pixel_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+
+    // Aggiorna le informazioni sull'attachment del frame buffer
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_obj_id, 0);
+
+    // Disattiva il framebuffer e l'oggetto texture utilizzati dalla classe
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+}
+
+// =========================================================================|
+//                                activate
+// =========================================================================|
+
+// Dice ad OpenGL di iniziare a renderizzare sulla texture del framebuffer per
+// l'immagine della scena di gioco.
+// Le successive chiamate ai comandi di draw di OpenGL andranno a salvare
+// l'output su questo framebuffer
+void rendering::scene_image_framebuffer::activate(){
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_obj_id);
+    glBindTexture(GL_TEXTURE_2D, texture_obj_id);
+}
+
+// =========================================================================|
+//                               deactivate
+// =========================================================================|
+
+// Dice ad OpenGL di tornare a renderizzare nella window dell'applicazione
+void rendering::scene_image_framebuffer::deactivate(){
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -322,4 +444,99 @@ void rendering::opengl_load_texture_on_texture_unit(GLuint texture_id, GLenum te
     glActiveTexture(texture_unit);
     glBindTexture(GL_TEXTURE_2D, texture_id);
     glActiveTexture(GL_TEXTURE0);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                             Utility Functions
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+rendering::Camera rendering::camera;
+rendering::Viewport rendering::game_scene_viewport;
+rendering::Viewport rendering::application_window_viewport;
+
+// Description:
+// Calcola la mvp in relazione ad una world position e alla configurazione 
+// attuale della posizione della camera di rendering
+//
+void rendering::calculate_mvp
+( 
+    float out_mvp [16], 
+    const float& world_x_size,
+    const float& world_y_size,
+    const float& world_x_pos, 
+    const float& world_y_pos, 
+    const float& world_z_angle
+)
+{
+
+    mat4x4 identity;
+    mat4x4 m_scale, m_rotation, translation;
+    mat4x4 model_matrix;
+    mat4x4 view_matrix, inv_view_matrix;
+    mat4x4 projection_matrix;
+    mat4x4 mvp;
+
+    // -------------------------------------------------------------------------|
+    // Build the MODEL MATRIX
+
+    // Build the SCALE MATRIX
+    mat4x4_identity(identity);
+
+    mat4x4_identity(m_scale);
+    m_scale[0][0] = world_x_size;
+    m_scale[1][1] = world_y_size;
+
+    // Build the ROTATION MATRIX
+    mat4x4_identity(identity);
+    mat4x4_rotate_Z(m_rotation, identity, world_z_angle);
+    
+    // Build the TRANSLATION MATRIX
+    mat4x4_identity(translation);
+    translation[3][0] = world_x_pos;
+    translation[3][1] = world_y_pos;
+
+    // Build the total MODEL MATRIX
+    mat4x4 rs_tmp;  // tmp matrix for rotation_matrix*scale_matrix result
+    mat4x4_mul(rs_tmp, m_rotation, m_scale);
+    mat4x4_mul(model_matrix, translation, rs_tmp);
+
+    // -------------------------------------------------------------------------|
+    // Build the VIEW MATRIX
+
+    mat4x4_identity(view_matrix);
+    mat4x4_identity(identity);
+    mat4x4_rotate_Z(view_matrix, identity, camera.world_z_angle);
+    view_matrix[3][0] = camera.world_x_pos;
+    view_matrix[3][1] = camera.world_y_pos;
+
+    mat4x4_invert(inv_view_matrix, view_matrix);
+
+    // -------------------------------------------------------------------------|
+    // Build the PROJECTION MATRIX
+
+    float frustum_l = - camera.world_width_fov/2;
+    float frustum_r = camera.world_width_fov/2;
+    float frustum_b = - camera.world_height_fov/2;
+    float frustum_t = camera.world_height_fov/2;
+    float frustum_n = - camera.world_near_clip;
+    float frustum_f = - camera.world_far_clip; 
+
+    mat4x4_ortho(projection_matrix, frustum_l , frustum_r, frustum_b, frustum_t, frustum_n, frustum_f);
+    
+    // -------------------------------------------------------------------------|
+    // Calculate the total MVP MATRIX
+
+    mat4x4 vm_tmp;  // tmp matrix for view_matrix*model_matrix result
+    mat4x4_mul(vm_tmp, inv_view_matrix, model_matrix);
+    mat4x4_mul(mvp, projection_matrix, vm_tmp);
+
+    // Setup shader input data 
+    
+    // Copy the result mvp to the output array
+    for(int i = 0; i < 4; i++){
+        for(int j = 0; j < 4; j++){
+            out_mvp[i+j*4] = mvp[j][i];
+        }
+    }
+
 }
