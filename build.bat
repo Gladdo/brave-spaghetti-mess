@@ -27,7 +27,8 @@ cl /c /MD -DSFML_STATIC /Fo"build/" ^
 /I "includes" ^
 main.cpp ^
 editor_gui.cpp ^
-logic.cpp
+logic.cpp ^
+game_objects.cpp
 
 :: -----------------------------------------------------|
 :: Link to dependencies
@@ -43,6 +44,7 @@ cl /MD -DSFML_STATIC /Fe: _main.exe ^
 _modules\dependencies.lib ^
 build\main.obj ^
 build\editor_gui.obj ^
-build\logic.obj
+build\logic.obj ^
+build\game_objects.obj
 
 
