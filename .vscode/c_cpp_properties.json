@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "prototype_032024A_config",            
+            "includePath": [
+                "includes/",
+                "_modules/opengl-libs/includes",
+                "_modules/rendering/includes",
+                "_modules/stb-image/includes",
+                "_modules/resource-loader/includes",
+                "_modules/imgui-docking/includes",
+                "_modules/physic/includes"
+            ],
+            "intelliSenseMode": "windows-msvc-x64",
+            "compilerPath": "D:\\Dev\\Visual Studio Community 2022\\VC\\Tools\\MSVC\\14.33.31629\\bin\\Hostx64\\x64\\cl.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}
