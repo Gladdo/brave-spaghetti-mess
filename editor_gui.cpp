@@ -1,11 +1,15 @@
 #include "editor_gui.h"
 
 #include "rendering.h"
+#include "game_data.h"
+
+#include <string>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                  GUI
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+int gui::game_object_list_selected_element_id = -1;
 gui::gui_parameters gui::parameters;
 
 // =========================================================================|
@@ -46,7 +50,7 @@ void gui::render_gui(){
         if (ImGui::BeginMenu("Edit")) 
         {
             if (ImGui::MenuItem("Add Game Object")) {
-                
+                game_data::AddBoxGameObject();
             }     
             
         ImGui::EndMenu();
@@ -62,8 +66,45 @@ void gui::render_gui(){
     {
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
     
-        if (ImGui::BeginChild("ResizableChild", ImVec2(-FLT_MIN, ImGui::GetTextLineHeightWithSpacing() * 8), ImGuiChildFlags_Border | ImGuiChildFlags_ResizeY)){
-            
+        if 
+        (   ImGui::BeginChild(
+            "ResizableChild", 
+            ImVec2(-FLT_MIN, ImGui::GetTextLineHeightWithSpacing() * 8),
+            ImGuiChildFlags_Border | ImGuiChildFlags_ResizeY)
+        ){
+            for (auto& el : game_data::box_gameobjects){
+
+                int box_go_id = el.first;
+                game_data::box_gameobject& box_go = el.second;
+
+                std::string text = "Box game object id: " + std::to_string(box_go_id);
+
+                if (ImGui::Button(text.c_str())) {
+                    game_object_list_selected_element_id = box_go_id;
+                }
+
+                if (game_data::event_is_dragging_active) {
+                    game_object_list_selected_element_id = game_data::dragged_game_object_id;
+                }
+
+                if (box_go_id == game_object_list_selected_element_id) {
+                    ImGui::Begin("Game Object Inspector ");
+                    
+                    game_data::transform_2d& t = box_go.transform_2d;
+                    physic::box_rigidbody_2d& rb = game_data::box_rigidbodies.at( box_go.box_rigidbody_2d_id );
+                    ImGui::Text(" position: %f %f ", t.world_x_pos, t.world_y_pos );
+
+                    static float slider_f;
+                    static ImGuiSliderFlags flags = ImGuiSliderFlags_None;
+                    if(ImGui::SliderFloat("Slider (Angle)", &slider_f, 0.0f, 360.0f, "%.3f", flags)){
+                        float rad_angle = slider_f * (2.0f * 3.14 / 360.0f);
+                        t.world_z_angle = rad_angle;
+                        rb.an = rad_angle;
+                    }
+    
+                    ImGui::End();
+                }
+            }
         }
         ImGui::EndChild();
 

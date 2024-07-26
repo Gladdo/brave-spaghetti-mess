@@ -27,8 +27,8 @@ namespace inputs{
     extern button_state mouse_left_button;
 
     bool check_if_click_is_on_scene();
-    void convert_mouse_coords_pixel_to_ndc();
-    void convert_mouse_coords_ndc_to_world();
+    void convert_screen_pixel_coords_to_ndc(double& out_x_ndc, double& out_y_ndc, float x_pixel, float y_pixel);
+    void convert_ndc_coords_to_world(float& out_x_world, float& out_y_world, float x_ndc, float y_ndc);
 
     // ====================================================================================
     // UTILS 

@@ -6,6 +6,8 @@
 #define GLFW_INCLUDE_NONE
 #include "glfw3.h"
 
+#include <iostream>
+
 extern GLFWwindow* window;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -15,7 +17,7 @@ extern GLFWwindow* window;
 // Data
 inputs::pixel_position inputs::mouse_cursor_position;
 inputs::multi_coord_position inputs::mouse_last_click;
-inputs::button_state inputs::mouse_left_button;
+inputs::button_state inputs::mouse_left_button = inputs::IDLE;
 
 bool inputs::check_if_click_is_on_scene(){
 
@@ -40,7 +42,9 @@ bool inputs::check_if_click_is_on_scene(){
     return false;
 }
 
-void inputs::convert_mouse_coords_pixel_to_ndc(){
+// Converte le coordinate x_pixel e y_pixel specificate in pixel della window della applicazione
+// in coordinate ndc relative allo schermo di rendering
+void inputs::convert_screen_pixel_coords_to_ndc(double& out_x_ndc, double& out_y_ndc, float x_pixel, float y_pixel){
     
     // Gather gui informations
     float scene_img_x = gui::parameters.scene_window.inner_img_pixel_x_pos;
@@ -48,47 +52,31 @@ void inputs::convert_mouse_coords_pixel_to_ndc(){
     float scene_img_width = gui::parameters.scene_window.inner_img_pixel_width;
     float scene_img_height = gui::parameters.scene_window.inner_img_pixel_height; 
 
-    // Gather last click informations
-    float mouse_pixel_x = mouse_last_click.pixel_x_pos;
-    float mouse_pixel_y = mouse_last_click.pixel_y_pos;
-
-    // Setup side effect outputs
-    double& mouse_ndc_x = mouse_last_click.ndc_x_pos;
-    double& mouse_ndc_y = mouse_last_click.ndc_y_pos;
-
-    // convert cursor coordinates relative to scene texture position as origin 
-    mouse_pixel_x = mouse_pixel_x - scene_img_x;
-    mouse_pixel_y = mouse_pixel_y - scene_img_y;
+    // Make application pixel coordinates relative to scene texture position as origin 
+    x_pixel = x_pixel - scene_img_x;
+    y_pixel = y_pixel - scene_img_y;
 
     // convert from screen space to NDC
     // Screen space: (0,0) on top left corner, (scene_screen_pixel_width, scene_screen_pixel_height) on bottom right corner
     // NDC: (-1, -1) in bottom left corner, (1, 1) in top right corner, (0,0) in the middle of the screen
-    mouse_ndc_x = ( mouse_pixel_x - ((float) scene_img_width/2)) / ((float) scene_img_width/2);
-    mouse_ndc_y = ( mouse_pixel_y - ((float) scene_img_height/2)) / ((float) scene_img_height/2);
+    out_x_ndc = ( x_pixel - ((float) scene_img_width/2)) / ((float) scene_img_width/2);
+    out_y_ndc = ( y_pixel - ((float) scene_img_height/2)) / ((float) scene_img_height/2);
 }
 
 // Mouse ndc cords devono essere le coordinate del view port convertite in NDC; ovvero il centro del viewport 
 // combacia con (0,0) (origine dell'NDC), il lato sinistro in basso del viewport a (-1, -1) e il lato destro in alto a (1, 1).
 // Tali coordinate vengono dunque convertite nelle coordinate del mondo di gioco
-void inputs::convert_mouse_coords_ndc_to_world(){
-    
-    // Gather mouse informations
-    double mouse_ndc_x = mouse_last_click.ndc_x_pos;
-    double mouse_ndc_y = mouse_last_click.ndc_y_pos;
-    
+void inputs::convert_ndc_coords_to_world(float& out_x_world, float& out_y_world, float x_ndc, float y_ndc){
+        
     // Gather camera informations
     float frustum_width =  rendering::camera.world_width_fov;
     float frustum_height = rendering::camera.world_height_fov;
     float camera_pos_x = rendering::camera.world_x_pos;
     float camera_pos_y = rendering::camera.world_y_pos;
-
-    // Setup side effect outputs
-    float& mouse_world_x = mouse_last_click.world_x_pos;
-    float& mouse_world_y = mouse_last_click.world_y_pos;
     
     // Convert from ndc to world
-    mouse_world_x = camera_pos_x + mouse_ndc_x * frustum_width/2;
-    mouse_world_y = camera_pos_y - mouse_ndc_y * frustum_height/2; 
+    out_x_world = camera_pos_x + x_ndc * frustum_width/2;
+    out_y_world = camera_pos_y - y_ndc * frustum_height/2; 
 
 }
 
@@ -140,11 +128,35 @@ void inputs::update(){
         mouse_last_click.pixel_y_pos = mouse_cursor_position.pixel_y_pos;
 
         if (check_if_click_is_on_scene()) {
-            convert_mouse_coords_pixel_to_ndc();
-            convert_mouse_coords_ndc_to_world();
+            convert_screen_pixel_coords_to_ndc(
+                mouse_last_click.ndc_x_pos, mouse_last_click.ndc_y_pos,
+                mouse_last_click.pixel_x_pos, mouse_last_click.pixel_y_pos
+            );
+            convert_ndc_coords_to_world(
+                mouse_last_click.world_x_pos, mouse_last_click.world_y_pos,
+                mouse_last_click.ndc_x_pos, mouse_last_click.ndc_y_pos
+            );
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////
-    //  
+    // Debug: Print mouse state each frame:
+
+    /* if (mouse_left_button == RELEASE) {
+        std::cout << "Mouse state switch: RELEASE" << std::endl << std::flush;
+    }
+
+    if (mouse_left_button == PRESS) {
+        std::cout << "Mouse state switch: PRESS" << std::endl << std::flush;
+    }
+
+    if (mouse_left_button == IDLE) {
+        std::cout << "Mouse state switch: IDLE" << std::endl << std::flush;
+    }
+
+    if (mouse_left_button == HOLD) {
+        std::cout << "Mouse state switch: HOLD" << std::endl << std::flush;
+    } */
+    
+    
 }

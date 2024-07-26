@@ -24,6 +24,8 @@ namespace gui{
 
     extern gui_parameters parameters;
 
+    extern int game_object_list_selected_element_id;
+
     void init(GLFWwindow * window);
     void render_gui();
     void destroy();
