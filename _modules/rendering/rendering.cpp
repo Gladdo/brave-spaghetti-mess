@@ -170,6 +170,140 @@ void rendering::quad_texture_shader::set_uniform_outline(bool outline){
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                          Quad Texture Shader
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+rendering::debug_line_shader::gpu_line_data_buffers rendering::debug_line_shader::gpu_line_data;
+GLuint rendering::debug_line_shader::program_id;
+GLint rendering::debug_line_shader::point_A_location;
+GLint rendering::debug_line_shader::point_B_location;
+GLint rendering::debug_line_shader::mvp_location;
+
+// =========================================================================|
+//                                init
+// =========================================================================|
+
+void rendering::debug_line_shader::init(){
+    // ====================================================================================
+    // Setup variable ids 
+
+    std::string vertex_shader_source = load_multiline_txt_to_string("resources/debug_line_vertex_shader_source.txt");
+    std::string fragment_shader_source = load_multiline_txt_to_string("resources/debug_line_fragment_shader_source.txt");
+
+    // Compila e linka gli shader specificati nelle stringhe vertex_shader_source e fragment_shader_source creando il programma shader
+    program_id = opengl_create_shader_program( vertex_shader_source.c_str(), fragment_shader_source.c_str() );
+ 
+    // Carica l'id delle variabili uniform del programma (per poterle successivamente accedere):
+    point_A_location = glGetUniformLocation(program_id, "point_A");
+    point_B_location = glGetUniformLocation(program_id, "point_B");
+    mvp_location = glGetUniformLocation(program_id, "MVP");
+
+    // ====================================================================================
+    // Setup vertex data
+
+    // Crea riferimenti per rendere codice più leggibile
+    GLuint& vbo_id = gpu_line_data.line_data_buffer_id;
+    GLuint& vao_id = gpu_line_data.line_data_pointers_buffer_id;
+
+    // Define vertex data
+    std::vector<int> data = {0, 1};
+
+    // -------------------------------------------------------------------------|
+    // Carica i dati sulla GPU 
+
+    // Binda il VAO; in questo modo il VBO successivamente bindato e le sue configurazioni vengono associate a questo VAO
+    glGenVertexArrays(1, &(vao_id));
+    glBindVertexArray(vao_id);
+
+    // Genera il VBO, bindalo e caricaci i dati (trasferiscili da RAM a GPU)
+    glGenBuffers(1, &(vbo_id));
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(int)*data.size(), data.data(), GL_STATIC_DRAW);
+
+    // -------------------------------------------------------------------------|
+    // Configura il VAO ( lega i dati nel buffer vbo all'input dello shader )
+    // Bind the VAO to the debug_line_shader; specifica nel VAO come lo shader deve legarle i dati nel VBO ai suoi input.
+    // Questo VAO è poi bindato quando lo shader viene eseguito sui dati della mesh
+
+    glUseProgram(program_id);
+
+    // Id delle variabili attributo vTexCoord e VPos del vertexshader
+    GLint point_switch_location;
+
+    // Carica l'id delle variabili attributo del programma:
+    point_switch_location = glGetAttribLocation(program_id, "point_switch");
+    
+    // Dimensione di ciascun attributo
+    const int attrib_point_switch_size = 1;
+
+    // Attiva/inizializza l'attributo vPos dello shader
+    glEnableVertexAttribArray(point_switch_location);
+    
+    // Lega l'attributo vPos dello shader ai primi due valori di ciascun vertice nel VBO
+    glVertexAttribPointer(point_switch_location, attrib_point_switch_size, GL_INT, GL_FALSE, sizeof(int), (void*) 0);
+
+    glUseProgram(0);
+
+    // Unbinda il VAO così che successive call al contesto di OpenGL non vadano implicitamente a modificarlo
+    glBindVertexArray(0);
+
+}
+
+// =========================================================================|
+//                          set_uniform_point_A
+// =========================================================================|
+
+void rendering::debug_line_shader::set_uniform_point_A(float x_pos, float y_pos){
+    glUniform2f(point_A_location, x_pos, y_pos);
+}
+
+// =========================================================================|
+//                          set_uniform_point_B
+// =========================================================================|
+
+void rendering::debug_line_shader::set_uniform_point_B(float x_pos, float y_pos){
+    glUniform2f(point_B_location, x_pos, y_pos);
+}
+
+// =========================================================================|
+//                          set_uniform_mvp
+// =========================================================================|
+
+void rendering::debug_line_shader::set_uniform_mvp(GLfloat mvp[16]){
+    glUniformMatrix4fv(mvp_location, 1, GL_FALSE, mvp);
+}
+
+// =========================================================================|
+//                          draw_2d_line_stripe
+// =========================================================================|
+
+void rendering::debug_line_shader::draw_2d_line_stripe( float stripe_pos_x, float stripe_pos_y, float stripe_rot, std::vector<float> stripe){
+    
+    // Prepare the mvp
+    float mvp [16];
+    rendering::calculate_mvp(
+        mvp,
+        1,
+        1,
+        stripe_pos_x,
+        stripe_pos_y,
+        stripe_rot
+    );
+
+    // Setup the shader mvp; this way, subsequent shader calls will render using it.
+    set_uniform_mvp(mvp);
+
+    // Draw the lines 
+    for (int i=0; i < stripe.size()-2; i=i+2 ) {
+        set_uniform_point_A(stripe[i], stripe[i+1]);
+        set_uniform_point_B(stripe[i+2], stripe[i+3]);
+        glDrawArrays(GL_LINES, 0, 2);
+    }
+
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                      Scene Image Framebuffer
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

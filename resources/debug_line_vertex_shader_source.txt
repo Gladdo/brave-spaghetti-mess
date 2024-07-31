@@ -1,0 +1,17 @@
+#version 330
+uniform vec2 point_A;
+uniform vec2 point_B;
+uniform mat4 MVP;
+
+in int point_switch;
+
+out vec2 fragPos;
+
+void main()
+{
+	if(point_switch==0){
+		gl_Position = MVP * vec4(point_A.x, point_A.y, 0.0, 1.0);
+	}else{
+		gl_Position = MVP * vec4(point_B.x, point_B.y, 0.0, 1.0);
+	}
+}

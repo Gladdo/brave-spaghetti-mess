@@ -30,6 +30,7 @@ int main(void){
 
     rendering::quad_texture_shader::init();
     rendering::scene_image_framebuffer::init();
+    rendering::debug_line_shader::init();
 
     // ====================================================================================
     // Initialize GUI
@@ -285,6 +286,23 @@ int main(void){
             glDrawArrays(GL_TRIANGLES, 0, rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_number);
         }
         
+        // ====================================================================================
+        // Setup rendering to render impulses
+
+        glUseProgram(rendering::debug_line_shader::program_id);
+        glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+
+        rendering::debug_line_shader::draw_2d_line_stripe( 
+            0, 0, 0, 
+            {  -2.5,  -2.5, 
+                2.5,  -2.5,
+                2.5,   2.5,
+               -2.5,   2.5,
+               -2.5,  -2.5
+            }
+        );
+        rendering::debug_line_shader::draw_2d_line_stripe( 0, 0, 0, { -2.5, -2.5, 2.5, 2.5 });
+
         // ====================================================================================
         // Finish rendering
 

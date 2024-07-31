@@ -2,6 +2,8 @@
 #define GLFW_INCLUDE_NONE
 #include "glfw3.h"
 
+#include <vector>
+
 namespace rendering{
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -215,13 +217,96 @@ namespace rendering{
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                          Debug Shader
+    //                                          Debug Line Shader
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // The shader draw call should work with stripes: we build shapes with lines (even 3d debug objects are drawn with 
     // lines and not triangles.).
     // Triangles are useful for rasterizer to determine pixels, but we only need to rasterize for lines to show hulls!
     // Otherwise we can't see through.
-    namespace debug_shader{
+    // -------------------------------------------------------------------------|
+    //  VERTEX SHADER: 
+    //  #version 330
+    //  uniform vec2 point_A;
+    //  uniform vec2 point_B;
+    //
+    //  in vec2 vTexCoord;
+    //  in vec2 vPos;
+    //
+    //  out vec2 texCoord;
+    //  out vec2 fragPos;
+    //
+    //  void main()
+    //  {
+    //
+    //      float border_width = 0.1f;
+    //      float outline_scale = 1 + border_width * outline; 
+    //
+    //      gl_Position = MVP * vec4(vPos * outline_scale, 0.0, 1.0);
+    //      texCoord = vTexCoord;
+    //      fragPos = vPos * outline_scale;
+    //  }
+    //
+    // -------------------------------------------------------------------------|
+    //  FRAGMENT SHADER:
+    //  #version 330
+    //  out vec4 FragColor;
+    //
+    //  in vec2 texCoord;
+    //  in vec2 fragPos;
+    //
+    //  uniform sampler2D texUnit;
+    //
+    //  void main()
+    //  {	
+    //	    if( fragPos.y > -0.5 &&  fragPos.y < 0.5 && fragPos.x > -0.5 && fragPos.x < 0.5){
+    //		    FragColor = texture(texUnit, texCoord);
+    //	    }else{
+    //		    FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    //	    }
+    //  }
+    //
+
+    namespace debug_line_shader{
+
+        // -------------------------------------------------------------------------|
+        // Dati/Buffer su cui esegue lo shader
+
+        struct gpu_line_data_buffers{
+            GLuint line_data_buffer_id;                     // Id del buffer sulla GPU contenente due valori 1 e 0 per direzionare il controllo nel vertex shader
+            GLuint line_data_pointers_buffer_id;            // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
+            const int vertex_number = 2;                    // Numero di vertici nella mesh
+        };
+
+        extern gpu_line_data_buffers gpu_line_data;
+
+        // -------------------------------------------------------------------------|
+        // Shader Elements Ids 
+
+        extern GLuint program_id;                           // Id dello shader program presente sulla GPU
+
+        extern GLint point_A_location;                      // Id della variabile uniform per il punto A nel vertex shader
+        extern GLint point_B_location;                      // Id della variabile uniform per il punto B nel vertex shader
+        extern GLint mvp_location;                          // Id della variabile uniform MVP nel vertexshader
+
+        // -------------------------------------------------------------------------|
+        // Funzioni di inizializzazione dello shader
+
+        void init();
+
+        // -------------------------------------------------------------------------|
+        // Funzioni per impostare i valori degli uniform dello shader
+
+        void set_uniform_point_A(float x_pos, float y_pos);
+        void set_uniform_point_B(float x_pos, float y_pos);
+        void set_uniform_mvp(GLfloat mvp[16]);
+
+        // -------------------------------------------------------------------------|
+        // Funzioni utility basate sullo shader
+
+        // Disegna una sequenza di linee; stripe_pos specifica la posizione in world space e
+        // mentre stripe_rot la sua direzione. 
+        // L'array stripe specifica la sequenza di vertici che compongono la stripe
+        void draw_2d_line_stripe( float stripe_pos_x, float stripe_pos_y, float stripe_rot, std::vector<float> stripe);
 
     };
 
