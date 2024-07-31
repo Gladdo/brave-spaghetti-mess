@@ -65,3 +65,17 @@ void physic::numeric_integration(rigidbody_2d& rb, float delta_time, float tot_f
     rb.w = rb.w + tot_torq/rb.I;
 
 }
+
+void physic::apply_impulse(rigidbody_2d& rb, impulse imp){
+
+    // Linear Effect:
+    rb.vx += (1/rb.m) * imp.d_x * imp.mag;
+    rb.vy += (1/rb.m) * imp.d_y * imp.mag; 
+
+    // Angular Effect:
+
+    // imp_torq = q_rel cross imp
+    float imp_torq = imp.q_x*imp.d_y*imp.mag - imp.q_y*imp.d_x*imp.mag;
+    rb.w += rb.I * imp_torq;
+
+}

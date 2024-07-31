@@ -41,6 +41,7 @@ namespace physic{
     );
 
     void numeric_integration(rigidbody_2d& rb, float delta_time, float tot_fx, float tot_fy, float tot_torq);
+    void apply_impulse(rigidbody_2d& rb, impulse imp);
 
 }
 

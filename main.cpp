@@ -11,6 +11,7 @@
 #include <vector>
 #include <iostream>
 #include <chrono>
+#include <math.h>
 
 GLFWwindow* window;
 
@@ -140,17 +141,38 @@ int main(void){
         //                                               PHYSIC UPDATE
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        // ====================================================================================
-        // Iterate numeric integrator over all box_rigidbody_2ds
-        for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
-            physic::numeric_integration(game_data::box_rigidbodies[i], delta_time.count(), 0, 0, 0);
-        }
+        if(game_data::is_simulation_running){
+            // ====================================================================================
+            // Manage starting impulses
 
-        // ====================================================================================
-        // Check for collisions and generate collision data
+            if(game_data::starting_impulses.size() != 0){
+                
+                // Apply starting impulses
+                for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
 
-        // ====================================================================================
-        // Solve collisions by generating impulses
+                    // If impulses exist for the i-esimo rigid body, then apply impulse
+                    if(game_data::starting_impulses.find(i)!= game_data::starting_impulses.end()){
+                        physic::apply_impulse( game_data::box_rigidbodies[i], game_data::starting_impulses.at(i));
+                        game_data::starting_impulses.erase(i);
+                    }
+
+                }
+            }
+                        
+            // ====================================================================================
+            // Iterate numeric integrator over all box_rigidbody_2ds
+            for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
+                physic::numeric_integration(game_data::box_rigidbodies[i], delta_time.count(), 0, 0, 0);
+            }
+
+            // ====================================================================================
+            // Check for collisions and generate collision data
+
+            // ====================================================================================
+            // Solve collisions by generating impulses
+
+
+        }        
 
         // ====================================================================================
         // Overwrite transform positions with the updated rigidbody data
@@ -287,21 +309,47 @@ int main(void){
         }
         
         // ====================================================================================
-        // Setup rendering to render impulses
+        // Setup rendering to render starting impulses
 
-        glUseProgram(rendering::debug_line_shader::program_id);
-        glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+        if(!game_data::is_simulation_running){
+            glUseProgram(rendering::debug_line_shader::program_id);
+            glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
 
-        rendering::debug_line_shader::draw_2d_line_stripe( 
-            0, 0, 0, 
-            {  -2.5,  -2.5, 
-                2.5,  -2.5,
-                2.5,   2.5,
-               -2.5,   2.5,
-               -2.5,  -2.5
+            rendering::debug_line_shader::set_arrow_stripe_width(0.1);
+            rendering::debug_line_shader::set_arrow_stripe_tip_size(0.2, 0.2);
+
+            if(game_data::starting_impulses.size() != 0){
+                
+                // Apply starting impulses
+                for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
+
+                    // If impulses exist for the i-esimo rigid body, then render it
+                    if(game_data::starting_impulses.find(i)!= game_data::starting_impulses.end()){
+                        
+                        // Get the rb
+                        physic::rigidbody_2d& rb = game_data::box_rigidbodies.at(i);
+
+                        // Get the impulse
+                        physic::impulse imp = game_data::starting_impulses.at(i);
+
+                        rendering::debug_line_shader::set_arrow_stripe_length(imp.mag);
+                        
+                        float x = imp.q_x + rb.x;
+                        float y = imp.q_y + rb.y;
+                        float rad_angle = std::atan2(imp.d_y, imp.d_x);
+
+                        rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
+
+                    }
+
+                }
             }
-        );
-        rendering::debug_line_shader::draw_2d_line_stripe( 0, 0, 0, { -2.5, -2.5, 2.5, 2.5 });
+
+
+
+
+            
+        }
 
         // ====================================================================================
         // Finish rendering

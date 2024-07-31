@@ -4,6 +4,7 @@
 #include "game_data.h"
 
 #include <string>
+#include <cmath>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                  GUI
@@ -88,20 +89,59 @@ void gui::render_gui(){
                 }
 
                 if (box_go_id == game_object_list_selected_element_id) {
-                    ImGui::Begin("Game Object Inspector ");
                     
-                    game_data::transform_2d& t = box_go.transform_2d;
-                    physic::box_rigidbody_2d& rb = game_data::box_rigidbodies.at( box_go.box_rigidbody_2d_id );
-                    ImGui::Text(" position: %f %f ", t.world_x_pos, t.world_y_pos );
+                    ImGui::Begin("Game Object Inspector ");
+                    {
+                    
+                        game_data::transform_2d& t = box_go.transform_2d;
+                        physic::box_rigidbody_2d& rb = game_data::box_rigidbodies.at( box_go.box_rigidbody_2d_id );
+                        ImGui::Text(" position: %f %f ", t.world_x_pos, t.world_y_pos );
 
-                    static float slider_f;
-                    static ImGuiSliderFlags flags = ImGuiSliderFlags_None;
-                    if(ImGui::SliderFloat("Slider (Angle)", &slider_f, 0.0f, 360.0f, "%.3f", flags)){
-                        float rad_angle = slider_f * (2.0f * 3.14 / 360.0f);
-                        t.world_z_angle = rad_angle;
-                        rb.an = rad_angle;
+                        static float slider_f;
+                        static ImGuiSliderFlags flags = ImGuiSliderFlags_None;
+                        if(ImGui::SliderFloat("Slider (Angle)", &slider_f, 0.0f, 360.0f, "%.3f", flags)){
+                            float rad_angle = slider_f * (2.0f * 3.14 / 360.0f);
+                            t.world_z_angle = rad_angle;
+                            rb.an = rad_angle;
+                        }
+
+                        // Show starting impulses configurations only if the simulation is not running.
+                        if(!game_data::is_simulation_running){
+
+                            static float imp_q_x = 0.000f;
+                            static float imp_q_y = 0.000f;
+                            ImGui::InputFloat("impulse x", &imp_q_x, 0.01f, 1.0f, "%.3f");
+                            ImGui::InputFloat("impulse y", &imp_q_y, 0.01f, 1.0f, "%.3f");
+
+                            static float imp_angle = 0.0f;
+                            if(ImGui::SliderFloat("impulse angle", &imp_angle, 0.0f, 360.0f, "%.3f", flags));
+
+                            static float imp_mag = 0.0f;
+                            if(ImGui::SliderFloat("impulse mag", &imp_mag, 0.0f, 10.0f, "%.3f", flags));
+
+                            // Add (or modify the existing) starting impulse of the object with the current slider values
+                            if (ImGui::Button("Add Impulse")){
+                                
+                                // If the rb has not a starting impulse, add it
+                                if(game_data::starting_impulses.find(box_go.box_rigidbody_2d_id)==game_data::starting_impulses.end()){
+                                    
+                                    game_data::starting_impulses.insert( {box_go.box_rigidbody_2d_id, {}} );
+                                }
+
+                                float imp_d_x = std::cos( imp_angle * (2.0f * 3.14 / 360.0f));
+                                float imp_d_y = std::sin( imp_angle * (2.0f * 3.14 / 360.0f));
+
+                                game_data::starting_impulses.at(box_go.box_rigidbody_2d_id).q_x = imp_q_x;
+                                game_data::starting_impulses.at(box_go.box_rigidbody_2d_id).q_y = imp_q_y;
+                                game_data::starting_impulses.at(box_go.box_rigidbody_2d_id).d_x = imp_d_x;
+                                game_data::starting_impulses.at(box_go.box_rigidbody_2d_id).d_y = imp_d_y;
+                                game_data::starting_impulses.at(box_go.box_rigidbody_2d_id).mag = imp_mag;
+                            
+                            }
+                        }
+
+                        
                     }
-    
                     ImGui::End();
                 }
             }

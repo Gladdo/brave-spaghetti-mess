@@ -308,6 +308,12 @@ namespace rendering{
         // L'array stripe specifica la sequenza di vertici che compongono la stripe
         void draw_2d_line_stripe( float stripe_pos_x, float stripe_pos_y, float stripe_rot, std::vector<float> stripe);
 
+        extern std::vector<float> arrow_stripe;
+
+        void set_arrow_stripe_length( float length );
+        void set_arrow_stripe_width( float width );
+        void set_arrow_stripe_tip_size( float length, float width);
+
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -179,6 +179,19 @@ GLint rendering::debug_line_shader::point_A_location;
 GLint rendering::debug_line_shader::point_B_location;
 GLint rendering::debug_line_shader::mvp_location;
 
+// Shapes
+std::vector<float> rendering::debug_line_shader::arrow_stripe =
+{   
+    0.0,   0.5, 
+    0.0,  -0.5,
+    5.0,  -0.5,
+    5.0,  -1.0,
+    6.0,   0.0,
+    5.0,   1.0,
+    5.0,   0.5,
+    0.0,   0.5
+};
+
 // =========================================================================|
 //                                init
 // =========================================================================|
@@ -300,7 +313,37 @@ void rendering::debug_line_shader::draw_2d_line_stripe( float stripe_pos_x, floa
         glDrawArrays(GL_LINES, 0, 2);
     }
 
+}
 
+// =========================================================================|
+//                        set_arrow_stripe_length
+// =========================================================================|
+
+void rendering::debug_line_shader::set_arrow_stripe_length(float length){
+    arrow_stripe[4]=length;
+    arrow_stripe[6]=length;
+    arrow_stripe[10]=length;
+    arrow_stripe[12]=length;
+}
+
+// =========================================================================|
+//                        set_arrow_stripe_width
+// =========================================================================|
+
+void rendering::debug_line_shader::set_arrow_stripe_width(float width){
+    arrow_stripe[1]=width;
+    arrow_stripe[3]=-width;
+    arrow_stripe[5]=-width;
+    arrow_stripe[13]=width;
+    arrow_stripe[15]=width;
+}
+
+void rendering::debug_line_shader::set_arrow_stripe_tip_size(float length, float width){
+    arrow_stripe[7]=-width;
+    arrow_stripe[11]=width;
+
+    // pick any coordinate which contains the arrow length and add the length offset to it
+    arrow_stripe[8]=arrow_stripe[4]+length;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

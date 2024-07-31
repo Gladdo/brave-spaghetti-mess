@@ -35,7 +35,8 @@ namespace game_data{
     // ====================================================================================
     // Data for simulation starting impulses
 
-
+    // Binds a rigid box id to an impulse to be applied on it
+    extern std::map<int, physic::impulse> starting_impulses;
 
     // ====================================================================================
     // Data for 2d boxes dragging event
