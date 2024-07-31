@@ -2,7 +2,15 @@
 #include <vector>
 #include <map>
 
+#include "glad.h"
+#define GLFW_INCLUDE_NONE
+#include "glfw3.h"
+
+
 namespace game_data{
+
+    // ====================================================================================
+    // Data for 2d boxes
 
     struct transform_2d{
         float world_x_scale = 1;
@@ -22,8 +30,25 @@ namespace game_data{
     extern std::map<int, box_gameobject> box_gameobjects;
     extern std::map<int, physic::box_rigidbody_2d> box_rigidbodies;
 
+    void AddBoxGameObject();
+
+    // ====================================================================================
+    // Data for simulation starting impulses
+
+
+
+    // ====================================================================================
+    // Data for 2d boxes dragging event
+
     extern bool event_is_dragging_active;
     extern int dragged_game_object_id;
+
+    // ====================================================================================
+    // Data for managing simulation running
     
-    void AddBoxGameObject();
+    extern GLuint sim_play_button_texture_id;
+    extern GLuint sim_pause_button_texture_id;
+    extern bool is_simulation_running;
+
+
 }

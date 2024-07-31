@@ -9,6 +9,10 @@ int game_data::dragged_game_object_id = 0;
 int next_box_id = 0;
 int next_box_rb_id = 0;
 
+GLuint game_data::sim_play_button_texture_id;
+GLuint game_data::sim_pause_button_texture_id;
+bool game_data::is_simulation_running = false;
+
 void game_data::AddBoxGameObject(){
     box_gameobjects.insert( {next_box_id, {}} );
     box_rigidbodies.insert( {next_box_rb_id, {}} );

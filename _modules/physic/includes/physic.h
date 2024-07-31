@@ -1,5 +1,24 @@
 namespace physic{
 
+    struct halfspace_2d{
+        // Poisition
+        float x=0, y=0;
+
+        // Normal
+        float n_x, n_y;
+    };
+
+    struct impulse{
+        // Coordinates of the point of application q (relative to the rb center)
+        float q_x, q_y;
+
+        // Direction of the impulse; the vector (d_x,d_y) needs to be normalized
+        float d_x, d_y;    
+
+        // Magnitude
+        float mag;
+    };
+
     struct rigidbody_2d{
         float x = 0,y = 0;
         float vx = 0, vy = 0;

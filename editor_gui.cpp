@@ -120,8 +120,7 @@ void gui::render_gui(){
     // di gioco.
     
     ImGui::Begin("SceneWindow", NULL, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-    {
-
+    {   
         // Get pixel size (as an int specifiying the number of pixel) of the currently defined window
         ImVec2 windowSize = ImGui::GetWindowSize();
 
@@ -136,7 +135,10 @@ void gui::render_gui(){
         parameters.scene_window.pixel_y_pos = windowPos.y;
     
         ImGui::BeginChild("SceneImage");
-        {
+        {            
+            // ====================================================================================
+            // Manage the image of the scene:
+
             ImVec2 imageSize = ImGui::GetWindowSize();
 
             ImVec2 imagePos = ImGui::GetWindowPos();
@@ -171,6 +173,56 @@ void gui::render_gui(){
                 ImVec2(0, 1), 
                 ImVec2(1, 0)
             );
+
+
+            // ====================================================================================
+            // Manage the play and pause buttons:
+
+            float button_size = 50; 
+
+            // Position the buttons either on top left of the scene image or on top left of the window
+            // if the scene width can't fit in window width.
+            ImVec2 buttonPos = ImVec2(
+                std::max( ImGui::GetWindowPos().x , imagePos.x),
+                imagePos.y
+            ); 
+            ImGui::SetCursorScreenPos(buttonPos);      
+
+            // Push styles setups for the button
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.f, 1.f, 1.f, 1.f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.4f, 0.8f, 1.f));
+
+            if (ImGui::ImageButton( 
+                    (ImTextureID) game_data::sim_play_button_texture_id,    // Id of the texture buffer containing the button image
+                    ImVec2( button_size, button_size),                      // Pixel size of the button
+                    ImVec2(0,0),                                            // Uv Coordinate of top left corner
+                    ImVec2(1,1),                                            // Uv Coordinate of bottom right corner
+                    0,                                                      // Frame border size
+                    ImVec4(0,0,0,0),                                        // Background color
+                    ImVec4(1,1,1,1) )                                       // Tint color
+            ){
+                game_data::is_simulation_running = true;
+            }
+
+            buttonPos.x += button_size; 
+            ImGui::SetCursorScreenPos(buttonPos); 
+
+            if (ImGui::ImageButton( 
+                    (ImTextureID) game_data::sim_pause_button_texture_id,   // Id of the texture buffer containing the button image
+                    ImVec2( button_size, button_size),                      // Pixel size of the button
+                    ImVec2(0,0),                                            // Uv Coordinate of top left corner
+                    ImVec2(1,1),                                            // Uv Coordinate of bottom right corner
+                    0,                                                      // Frame border size
+                    ImVec4(0,0,0,0),                                        // Background color
+                    ImVec4(1,1,1,1) )                                       // Tint color
+            ){
+                    game_data::is_simulation_running = false;
+            }
+
+            // Pop styles configurations from the stack
+            ImGui::PopStyleColor(3);
+            
         }
         ImGui::EndChild();
         

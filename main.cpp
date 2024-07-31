@@ -40,12 +40,28 @@ int main(void){
     // Initialize Wall Texture
 
     int img_width, img_height;
+    std::vector<unsigned char> image_data;
 
     // Load image data from jpg file to RAM 
-    std::vector<unsigned char> image_data = load_image_to_unsigned_char_vector("resources/wall.jpg", &img_width, &img_height);
+    image_data = load_image_to_unsigned_char_vector("resources/wall.jpg", &img_width, &img_height);
     
     // Create a texture object on the GPU and load image data to it
     GLuint wall_texture_id = rendering::opengl_create_texture_buffer(image_data.data(), img_width, img_height);
+
+    image_data.clear();
+
+    // ====================================================================================
+    // Initialize sim play and sim pause buttons images
+
+    // Initialize play button texture
+    image_data = load_image_to_unsigned_char_vector("resources/ui-images/sim-play-button.png", &img_width, &img_height);
+    game_data::sim_play_button_texture_id = rendering::opengl_create_texture_buffer(image_data.data(), img_width, img_height, 4);
+    image_data.clear();
+
+    // initialize pause button texture
+    image_data = load_image_to_unsigned_char_vector("resources/ui-images/sim-pause-button.png", &img_width, &img_height);
+    game_data::sim_pause_button_texture_id = rendering::opengl_create_texture_buffer(image_data.data(), img_width, img_height, 4);
+    image_data.clear();
 
     // ====================================================================================
     // Quad Texture Shader Uniform configuration
@@ -136,7 +152,7 @@ int main(void){
         // Solve collisions by generating impulses
 
         // ====================================================================================
-        // Update transform positions with the updated rigidbody data
+        // Overwrite transform positions with the updated rigidbody data
         for( int i = 0; i < game_data::box_gameobjects.size(); i++ ) {
             int rb_id = game_data::box_gameobjects[i].box_rigidbody_2d_id;
 

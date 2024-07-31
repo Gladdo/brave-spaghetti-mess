@@ -3,6 +3,10 @@
 #include "glfw3.h"
 
 namespace rendering{
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                      NOTES ON OPENGL:
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
     
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                         THEORY: OpenGL Shaders
@@ -50,6 +54,75 @@ namespace rendering{
     //      - Caricare sull'uniform dello shader texUnit il valore "1" per specificare
     //        allo shader di utilizzare l'immagine presente nella texture unit 1
     //
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                        THEORY: OpenGL Framebuffers
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // =========================================================================|
+    //                                 FRAMEBUFFER
+    // =========================================================================|
+    //
+    // OpenGL utilizza i framebuffers come containers per l'output delle chiamate
+    // di rendering.
+    // Un framebuffer è composto da dei puntatori a tre differenti buffers detti 
+    // "attachment" del framebuffer; un'attachment non è altro che un'area di memoria 
+    // in cui sono appoggiate tre diverse tipologie informazioni:
+    //
+    //  - Color: informazioni sul colore dei pixel da renderizzare
+    //  - Stencil:  maschera dei pixel validi nel rendering (i pixel fuori dallo 
+    //              stencil non sono renderizzati)
+    //  - Depth: informazioni sulla "profondità" di ciascun pixel
+    //
+    // Ciascun attachment può essere di due tipologie:
+    //
+    //  - Texture:  L'area di memoria in cui vengono salvate le informazioni è 
+    //              gestita come una vera e propria texture
+    //  - RenderBuffer: le informazioni vengono salvate su una specifica tipologia di
+    //                  buffer ottimizzata per le operazioni di rendering
+    //
+    // =========================================================================|
+    //                                 VIEWPORT
+    // =========================================================================|
+    //
+    // You always need to call glViewport(x,y,width,height) before starting to draw 
+    // to a framebuffer with a different size.
+    // This is necessary because the viewport is not part of the framebuffer state, 
+    // yet is is used by rendering calls; so it needs to be specified with the 
+    // currently used framebuffer size.
+    //
+    // Il viewport crea il legame tra le coordinate xn=[-1,1] yn=[-1,1] dell'ndc e 
+    // i pixel del buffer di output:
+    //
+    //      glViewport(x,y,width,height):
+    //
+    //          -   x,y specify the pixel in the output where ot start rendering  
+    //          -   width, height specify the widht and height of the area in the 
+    //              output frame
+    //
+    // Il legame tra l'NDC space e i pixel di output avviene dunque nel seguente modo:
+    //
+    //          -   The pixel x, y of the output buffer binds to the coordinate (-1,-1) 
+    //              of the NDC space
+    //          -   The pixel x+width, y+height of the output buffer binds to the 
+    //              coordinate (1, 1) of the NDC space
+    //
+    // Esempio: se si renderizza su una finestra di 800x600 pixel, impostare un view
+    // port con la chiamata glViewport(100,150,400,400) significa che quanto
+    // dato in output dalla pipeline di rendering verrà steso sui pixel della
+    // finestra nei range x=[100,500], y=[150,550].
+    //
+    // NB: E' dunque necessario tenere conto di cosa viene rappresentato dalle
+    // coordinate dell'NDC in termini di mondo di gioco: se nel range x=[-1,1]
+    // dell'NDC è visualizzato 100 metri del mondo di gioco mentre nel range y=[-1,1]
+    // è visualizzato 50 metri del mondo di gioco, il viewport dovrà rispettare
+    // la proporzione 1/2: l'altezza in pixel del viewport dev'essere la metà 
+    // della sua larghezza, altrimenti la scena incollata sul view port "stretchato" 
+    // appare "stretchata" (ie 1000x1000) o "compressa" (ie 1000x250)
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                          FILE CODE:
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////                                     
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                          Quad Texture Shader 
@@ -142,69 +215,15 @@ namespace rendering{
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                        THEORY: OpenGL Framebuffers
+    //                                          Debug Shader
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //
-    // =========================================================================|
-    //                                 FRAMEBUFFER
-    // =========================================================================|
-    //
-    // OpenGL utilizza i framebuffers come containers per l'output delle chiamate
-    // di rendering.
-    // Un framebuffer è composto da dei puntatori a tre differenti buffers detti 
-    // "attachment" del framebuffer; un'attachment non è altro che un'area di memoria 
-    // in cui sono appoggiate tre diverse tipologie informazioni:
-    //
-    //  - Color: informazioni sul colore dei pixel da renderizzare
-    //  - Stencil:  maschera dei pixel validi nel rendering (i pixel fuori dallo 
-    //              stencil non sono renderizzati)
-    //  - Depth: informazioni sulla "profondità" di ciascun pixel
-    //
-    // Ciascun attachment può essere di due tipologie:
-    //
-    //  - Texture:  L'area di memoria in cui vengono salvate le informazioni è 
-    //              gestita come una vera e propria texture
-    //  - RenderBuffer: le informazioni vengono salvate su una specifica tipologia di
-    //                  buffer ottimizzata per le operazioni di rendering
-    //
-    // =========================================================================|
-    //                                 VIEWPORT
-    // =========================================================================|
-    //
-    // You always need to call glViewport(x,y,width,height) before starting to draw 
-    // to a framebuffer with a different size.
-    // This is necessary because the viewport is not part of the framebuffer state, 
-    // yet is is used by rendering calls; so it needs to be specified with the 
-    // currently used framebuffer size.
-    //
-    // Il viewport crea il legame tra le coordinate xn=[-1,1] yn=[-1,1] dell'ndc e 
-    // i pixel del buffer di output:
-    //
-    //      glViewport(x,y,width,height):
-    //
-    //          -   x,y specify the pixel in the output where ot start rendering  
-    //          -   width, height specify the widht and height of the area in the 
-    //              output frame
-    //
-    // Il legame tra l'NDC space e i pixel di output avviene dunque nel seguente modo:
-    //
-    //          -   The pixel x, y of the output buffer binds to the coordinate (-1,-1) 
-    //              of the NDC space
-    //          -   The pixel x+width, y+height of the output buffer binds to the 
-    //              coordinate (1, 1) of the NDC space
-    //
-    // Esempio: se si renderizza su una finestra di 800x600 pixel, impostare un view
-    // port con la chiamata glViewport(100,150,400,400) significa che quanto
-    // dato in output dalla pipeline di rendering verrà steso sui pixel della
-    // finestra nei range x=[100,500], y=[150,550].
-    //
-    // NB: E' dunque necessario tenere conto di cosa viene rappresentato dalle
-    // coordinate dell'NDC in termini di mondo di gioco: se nel range x=[-1,1]
-    // dell'NDC è visualizzato 100 metri del mondo di gioco mentre nel range y=[-1,1]
-    // è visualizzato 50 metri del mondo di gioco, il viewport dovrà rispettare
-    // la proporzione 1/2: l'altezza in pixel del viewport dev'essere la metà 
-    // della sua larghezza, altrimenti la scena incollata sul view port "stretchato" 
-    // appare "stretchata" (ie 1000x1000) o "compressa" (ie 1000x250)
+    // The shader draw call should work with stripes: we build shapes with lines (even 3d debug objects are drawn with 
+    // lines and not triangles.).
+    // Triangles are useful for rasterizer to determine pixels, but we only need to rasterize for lines to show hulls!
+    // Otherwise we can't see through.
+    namespace debug_shader{
+
+    };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                          Scene Image Framebuffer
@@ -240,11 +259,13 @@ namespace rendering{
     GLuint opengl_create_shader_program(const char* vertex_shader_text_ptr, const char* fragment_shader_ptr);
     unsigned opengl_compile_shader(GLuint shader_id, const char* shader_source);
     GLuint opengl_create_texture_buffer(unsigned char* img_data, int img_width, int img_height );
+    GLuint opengl_create_texture_buffer(unsigned char* img_data, int img_width, int img_height, int pixel_channels );
     GLFWwindow* opengl_glfw_initialization();
     void opengl_load_texture_on_texture_unit(GLuint texture_id, GLenum texture_unit);
+    
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                              Utility Functions
+    //                                                  Utility
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     struct Viewport{

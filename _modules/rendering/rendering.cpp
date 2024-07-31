@@ -436,6 +436,43 @@ GLuint rendering::opengl_create_texture_buffer(unsigned char* img_data, int img_
     return texture_id;
 }
 
+GLuint rendering::opengl_create_texture_buffer(unsigned char* img_data, int img_width, int img_height, int pixel_channels ){
+
+    GLenum format;
+    if (pixel_channels == 3)
+        format = GL_RGB;
+    else if (pixel_channels == 4)
+        format = GL_RGBA;
+    else
+        return -1;
+
+    GLuint texture_id;
+
+    // Activate texture unit 0; use this unit for textures configurations
+    glActiveTexture(GL_TEXTURE0);
+
+    // Generate a texture object and bind it on the current active texture unit
+    glGenTextures(1, &texture_id);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+
+    // Configure the currently bound texture
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Populate the texture object data
+    glTexImage2D(GL_TEXTURE_2D, 0, format, img_width, img_height, 0, format, GL_UNSIGNED_BYTE, img_data);
+
+    // Generate texture's mimpams from texture data just loaded
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    return texture_id;
+}
+
+
+
+
 // =========================================================================|
 //                   opengl_load_texture_on_texture_unit
 // =========================================================================|
