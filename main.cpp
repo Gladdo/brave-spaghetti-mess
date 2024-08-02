@@ -88,8 +88,9 @@ int main(void){
     std::chrono::duration<float> delta_time;
 
     // ====================================================================================
-    // Initialize Boxes
-    
+    // Step forward control variable
+    bool step;
+
     while (!glfwWindowShouldClose(window))
     { 
 
@@ -97,7 +98,13 @@ int main(void){
         //                                               MANAGE INPUTS
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+        step = false;
+
         inputs::update();
+
+        if(inputs::simulation_step_forward_button==inputs::PRESS){
+            step = true;
+        }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                               PRE LOGIC UPDATE
@@ -105,6 +112,7 @@ int main(void){
 
         // ====================================================================================
         // If left clicked, iterate over all box_gameobjects and check if the mouse hits a rigidbody
+        // If it does, set event_is_dragging_active and register the hit game object in dragged_game_object_id
         if (inputs::mouse_left_button == inputs::PRESS && inputs::check_if_click_is_on_scene()){
 
             for( auto& game_object : game_data::box_gameobjects) {
@@ -141,7 +149,7 @@ int main(void){
         //                                               PHYSIC UPDATE
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        if(game_data::is_simulation_running){
+        if(game_data::is_simulation_running && step){
             // ====================================================================================
             // Manage starting impulses
 
@@ -158,7 +166,7 @@ int main(void){
 
                 }
             }
-                        
+
             // ====================================================================================
             // Iterate numeric integrator over all box_rigidbody_2ds
             for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
@@ -167,12 +175,24 @@ int main(void){
 
             // ====================================================================================
             // Check for collisions and generate collision data
+            
+            // Reset contact list
+            physic::box_contacts.clear();
+            
+            // Populate contact list
+            physic::generate_2dbox_contacts_data(game_data::box_rigidbodies);
+            
 
             // ====================================================================================
             // Solve collisions by generating impulses
 
-
+            physic::solve_2dbox_contacts_interpenetration_linear_proj();
+            physic::solve_2dbox_contacts_velocities();
+            
+            
         }        
+
+        
 
         // ====================================================================================
         // Overwrite transform positions with the updated rigidbody data
@@ -184,6 +204,7 @@ int main(void){
             game_data::box_gameobjects[i].transform_2d.world_z_angle = game_data::box_rigidbodies[rb_id].an;
         }
 
+        
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                               POST LOGIC UPDATE
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -237,6 +258,8 @@ int main(void){
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
         // ====================================================================================
+        //                              Setup rendering frame
+        // ====================================================================================
         // Update the game scene framebuffer
 
         // Ridimensiona la texutre in cui è renderizzata la scena in base alla dimensione dell'elemento
@@ -274,7 +297,8 @@ int main(void){
         rendering::camera.world_width_fov = rendering::game_scene_viewport.ratio * rendering::camera.world_height_fov;
 
         // ====================================================================================
-        // Setup rendering to render boxes
+        //                                  Render Boxes
+        // ====================================================================================
 
         glUseProgram(rendering::quad_texture_shader::program_id);
         glBindVertexArray(rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
@@ -309,6 +333,8 @@ int main(void){
         }
         
         // ====================================================================================
+        //                                  Render Starting Impulses
+        // ====================================================================================
         // Setup rendering to render starting impulses
 
         if(!game_data::is_simulation_running){
@@ -320,7 +346,6 @@ int main(void){
 
             if(game_data::starting_impulses.size() != 0){
                 
-                // Apply starting impulses
                 for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
 
                     // If impulses exist for the i-esimo rigid body, then render it
@@ -344,15 +369,61 @@ int main(void){
 
                 }
             }
-
-
-
-
             
         }
 
         // ====================================================================================
-        // Finish rendering
+        //                                  Render Contact Impulses
+        // ====================================================================================
+        // Setup rendering to render starting impulses
+
+        glUseProgram(rendering::debug_line_shader::program_id);
+        glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+
+        rendering::debug_line_shader::set_arrow_stripe_width(0.1);
+        rendering::debug_line_shader::set_arrow_stripe_tip_size(0.2, 0.2);
+
+        for(int i = 0; i < physic::box_contacts.size(); i ++){
+            physic::contact_data& contact = physic::box_contacts[i];
+
+            rendering::debug_line_shader::set_arrow_stripe_length(contact.resolved_impulse_mag);
+
+            mat4x4 mm;
+            vec4 local_q;
+            vec4 world_q;
+
+            local_q[0] = contact.qa_x;
+            local_q[1] = contact.qa_y;
+            local_q[2]=0;
+            local_q[3]=1;
+
+            physic::build_2d_model_matrix(mm, contact.rb_a->x, contact.rb_a->y, contact.rb_a->an);
+            mat4x4_mul_vec4(world_q, mm, local_q);
+
+            float x = world_q[0];
+            float y = world_q[1];
+            float rad_angle = std::atan2(contact.n_y, contact.n_x);
+
+            rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
+            
+            local_q[0] = contact.qb_x;
+            local_q[1] = contact.qb_y;
+            local_q[2] = 0;
+            local_q[3] = 1;
+
+            physic::build_2d_model_matrix(mm, contact.rb_b->x, contact.rb_b->y, contact.rb_b->an);
+            mat4x4_mul_vec4(world_q, mm, local_q);
+
+            x = world_q[0];
+            y = world_q[1];
+            rad_angle = std::atan2(-contact.n_y, -contact.n_x);
+
+            rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
+        }
+
+        // ====================================================================================
+        //                                  Finish rendering
+        // ====================================================================================
 
         glUseProgram(0);
         rendering::scene_image_framebuffer::deactivate();

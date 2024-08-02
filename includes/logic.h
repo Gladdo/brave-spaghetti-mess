@@ -25,6 +25,7 @@ namespace inputs{
     extern multi_coord_position mouse_last_click;
 
     extern button_state mouse_left_button;
+    extern button_state simulation_step_forward_button;
 
     bool check_if_click_is_on_scene();
     void convert_screen_pixel_coords_to_ndc(double& out_x_ndc, double& out_y_ndc, float x_pixel, float y_pixel);

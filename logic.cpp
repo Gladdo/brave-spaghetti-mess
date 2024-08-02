@@ -18,6 +18,7 @@ extern GLFWwindow* window;
 inputs::pixel_position inputs::mouse_cursor_position;
 inputs::multi_coord_position inputs::mouse_last_click;
 inputs::button_state inputs::mouse_left_button = inputs::IDLE;
+inputs::button_state inputs::simulation_step_forward_button = inputs::IDLE;
 
 bool inputs::check_if_click_is_on_scene(){
 
@@ -157,6 +158,15 @@ void inputs::update(){
     if (mouse_left_button == HOLD) {
         std::cout << "Mouse state switch: HOLD" << std::endl << std::flush;
     } */
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    // Get step button
+
+    state = glfwGetKey(window, GLFW_KEY_P);
     
+    simulation_step_forward_button = IDLE;
+    if (state == GLFW_PRESS){
+        simulation_step_forward_button = PRESS;
+    }
     
 }
