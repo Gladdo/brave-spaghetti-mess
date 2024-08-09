@@ -189,10 +189,7 @@ int main(void){
             physic::solve_2dbox_contacts_interpenetration_linear_proj();
             physic::solve_2dbox_contacts_velocities();
             
-            
         }        
-
-        
 
         // ====================================================================================
         // Overwrite transform positions with the updated rigidbody data

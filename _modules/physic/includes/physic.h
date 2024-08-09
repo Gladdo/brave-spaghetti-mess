@@ -75,6 +75,7 @@ namespace physic{
 
     void generate_2dbox_contacts_data(std::vector<box_rigidbody_2d>& boxes);
     void generate_2dbox_contacts_data(std::map<int, box_rigidbody_2d>& boxes);
+    
     // Restituisce il contatto del vertice di A con profondità maggiore in B
     void get_max_contact_AtoB(contact_data& out_max_contact, box_rigidbody_2d* rbA, box_rigidbody_2d* rbB);
     void solve_2dbox_contacts_interpenetration_linear_proj();
