@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <array>
 #include "linmath.h"
 
 namespace physic{
@@ -17,42 +18,6 @@ namespace physic{
         float x;
         float y;
         float z;
-
-        vec(){
-            x = 0;
-            y = 0;
-            z = 0;
-        }
-
-        vec(float vx, float vy){
-            x = vx;
-            y = vy;
-            z = 0;
-        }
-
-        vec(float vx, float vy, float vz){
-            x = vx;
-            y = vy;
-            z = vz;
-        }
-
-        vec(vec& v){
-            x = v.x;
-            y = v.y;
-            z = v.z;
-        }
-
-        vec(vec&& v){
-            x = v.x;
-            y = v.y;
-            z = v.z;
-        }
-
-        vec& operator=(vec&& v){
-            x = v.x;
-            y = v.y;
-            z = v.z;
-        }
 
         float operator*(const vec& v){
             float res;
@@ -107,51 +72,41 @@ namespace physic{
     // ====================================================================================
     // Matrix
 
+    typedef std::array<float, 16> mat;
+
+    void array_to_mat4x4(mat4x4& out, mat& in){
+        in[4] = 2;
+        for(int i = 0; i < 4; i ++)
+            for(int j = 0; j < 4; j++)
+                out[i][j] = in[i*4+j];
+    }
+
+
     struct mat{
-        mat4x4 matrix;
+        float matrix [16];
 
         // ====================================================================================
         // Constructor:
-        // Inizializza la matrice ad un'array di zeri.
+        // Inizializza la matrice ad un'array di zeri
         mat(){
-            for(int i=0; i < 4; i++)
-                for(int j=0; j < 4; j++)
-                    matrix[i][j] = 0;            
-        }
-        
-        // ====================================================================================
-        // Move Constructor:
-        // Definisce come gestire la costruzione di una mat quando si usa una istruzione del tipo:
-        //      mat matrix ({ mat() });
-        // Ovvero quando l'argomento al costruttore è un oggetto mat temporaneo.
-        // Inoltre viene utilizzato quando una funzione ritorna un oggetto di tipo mat:
-        //      mat foo(){
-        //          mat tmp;
-        //          // manipulate tmp
-        //          return tmp;
-        //      }
-        // Infatti quando foo() appare in un'espressione, il token "foo()" equivale a una mat. 
-        // Il valore di questa mat deriva dal valore di tmp che era precedentemente sullo stack 
-        // e da cui si è fatto il move:
-        //      mat m = foo();
-        // equivale a
-        //      mat m = move(tmp);
-        mat(mat&& moved_m){
-            mat4x4 identity;
-            mat4x4_identity(identity);
-            mat4x4_mul(matrix, identity, moved_m.matrix);
+            for(int i=0; i < 16; i++)         
+                matrix[i] = 0;
         }
 
-        // ====================================================================================
-        // Move Assignement:
-        // Definisce il comportamento dell'istruzione "m = moved_m;" quando moved_m è un r_value.
-        // Copia in m la matrice contenuta in moved_m.
-        mat& operator=(mat&& moved_m){
-            mat4x4 identity;
-            mat4x4_identity(identity);
-            mat4x4_mul(matrix, identity, moved_m.matrix);
-            return *this;
+    private:
+
+        void array_to_mat4x4(mat4x4& m_out){
+            for(int i = 0; i < 4; i ++)
+                for(int j = 0; j < 4; j++)
+                    m_out[i][j] = matrix[i*4+j];
         }
+
+        void mat4x4_to_array(mat4x4& m_in){
+            for(int i = 0; i < 4; i ++)
+                for(int j = 0; j < 4; j++)
+                    matrix[i*4+j] = m_in[i][j];
+        }
+
 
         // ====================================================================================
         // Product operator overload
@@ -177,13 +132,13 @@ namespace physic{
 
         void set_element(int row, int column, float value){
             if(row < 4 && column < 4)
-                matrix[row][column] = value;
+                matrix[row*4 + column] = value;
         }
 
         float get_element(int row, int column){
             if(!(row < 4 && column < 4))
                 assert("Row or column value out of bound for mat element!");
-            return matrix[row][column];
+            return matrix[row * 4 + column];
         }
         
         void set_to_identity(){
