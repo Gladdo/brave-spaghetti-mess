@@ -1,88 +1,128 @@
 #include <vector>
 #include <map>
-#include "linmath.h"
+#include "physic_math.h"
 
 namespace physic{
 
-    // ====================================================================================
-    // Structures declarations
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                           2D PHYSIC SIMULATION
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    struct halfspace_2d{
-        // Poisition
-        float x=0, y=0;
+    namespace dim2{
 
-        // Normal
-        float n_x, n_y;
-    };
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                           DINAMYC SIMULATION
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    struct impulse{
-        // Coordinates of the point of application q (relative to the rb center)
-        float q_x, q_y;
+        struct rigidbody{        
+            // Linear quantities    
+            vec pos;
+            vec vel;
 
-        // Direction of the impulse; the vector (d_x,d_y) needs to be normalized
-        float d_x, d_y;    
+            // Angular quantities
+            float angle = 0;
+            float w = 0;
+            
+            // Inertia values
+            float m = 1;
+            float I = 1;
+        };
 
-        // Magnitude
-        float mag;
-    };
+        struct impulse{
+            vec q;                          // Application point of the ipulse (relative to a rigid body position)
+            vec d;                          // Direction of the impulse; the vector (d_x,d_y) should be a normalized vector.
+            float mag;                      // Magnitude of the impulse
+        };
 
-    struct rigidbody_2d{
-        float x = 0,y = 0;
-        float vx = 0, vy = 0;
-        float an = 0;
-        float w = 0;
-        float m = 1;
-        float I = 1;
-    };
+        void numeric_integration(rigidbody& rb, float delta_time, vec tot_f, float tot_torq);
+        void apply_impulse(rigidbody& rb, impulse imp);
 
-    struct box_rigidbody_2d : rigidbody_2d{
-        float width;
-        float height;
-    };
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                             COLLISION DETECTION
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    struct contact_data{
-        // TODO: contact data rb pointers points to element of a vector
-        // We need to make the pointed element not changing the memory address!
-        rigidbody_2d* rb_a;
-        rigidbody_2d* rb_b;
+        // ====================================================================================
+        // Colliders data structs:
 
-        float qa_x, qa_y;
-        float qb_x, qb_y;
-        float n_x, n_y;
-        float pen;
+        struct collider{
+            enum collider_type {BOX, HALFSPACE};
+        };
 
-        // For rendering
-        float resolved_impulse_mag;
-    };
+        struct collider_box : collider{
+            collider_type type = BOX;
+            float width;
+            float height;
+        };
 
-    // ====================================================================================
-    // Data declaration
+        // ====================================================================================
+        // Collision detection functions:
+        
+        // Check if a point is inside a box collider
+        bool check_pointbox_collision(
+            float point_x, float point_y, 
+            float box_x, float box_y, float box_zangle, 
+            collider_box coll_box
+        );
 
-    extern std::vector<contact_data> box_contacts;
 
-    // ====================================================================================
-    // Functions
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                     COLLISION DETECTION: CONTACT GENERATION
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    bool check_point_box_overlap(
-        float point_x, float point_y, 
-        float box_x, float box_y, float box_zangle, 
-        float collider_width,
-        float collider_height
-    );
+        // ====================================================================================
+        // Output of contact generation steps:
 
-    void numeric_integration(rigidbody_2d& rb, float delta_time, float tot_fx, float tot_fy, float tot_torq);
-    void apply_impulse(rigidbody_2d& rb, impulse imp);
+        struct contact_data{
+            rigidbody* rb_a;
+            rigidbody* rb_b;
+            
+            vec q_a;                                                // q_a: contact point on rigid body A, relative to rigid body A position
+            vec q_b;                                                // q_b: contact point on rigid body B, relative to rigid body B position
+            vec n;                                                  // n: contact normal
+            float pen;                                              // pen: contact penetration
 
-    void generate_2dbox_contacts_data(std::vector<box_rigidbody_2d>& boxes);
-    void generate_2dbox_contacts_data(std::map<int, box_rigidbody_2d>& boxes);
-    
-    // Restituisce il contatto del vertice di A con profondità maggiore in B
-    void get_max_contact_AtoB(contact_data& out_max_contact, box_rigidbody_2d* rbA, box_rigidbody_2d* rbB);
-    void solve_2dbox_contacts_interpenetration_linear_proj();
-    void solve_2dbox_contacts_velocities();
+            float resolved_impulse_mag;                             // magnitude of the impulse that solve the contact; used for rendering purposes
+        };
+        
+        extern std::vector<contact_data> contacts;
 
-    void build_2d_model_matrix(mat4x4& mm, float x_pos, float y_pos, float z_angle);
+        // ====================================================================================
+        // Contact generation functions:
+        // Queste funzioni popolano il vettore di contatti "std::vector<contact_data> contacts;"
 
+        // Restituisce il contatto del vertice di A con profondità maggiore in B
+        void generate_boxbox_contactdata_naive(rigidbody& A, rigidbody& B, collider_box& coll_A, collider_box& coll_B);
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                           CONTACT RESOLUTION
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // ====================================================================================
+        // Structures declarations
+
+        struct halfspace{
+            // Poisition
+            float x=0, y=0;
+
+            // Normal
+            float n_x, n_y;
+        };        
+
+        // ====================================================================================
+        // Functions
+
+
+
+        void generate_2dbox_contacts_data(std::vector<box_rigidbody_2d>& boxes);
+        void generate_2dbox_contacts_data(std::map<int, box_rigidbody_2d>& boxes);
+        
+        // Restituisce il contatto del vertice di A con profondità maggiore in B
+        void get_max_contact_AtoB(contact_data& out_max_contact, box_rigidbody_2d* rbA, box_rigidbody_2d* rbB);
+        void solve_2dbox_contacts_interpenetration_linear_proj();
+        void solve_2dbox_contacts_velocities();
+
+        void build_2d_model_matrix(mat4x4& mm, float x_pos, float y_pos, float z_angle);
+    }
 }
 
 

@@ -121,7 +121,7 @@ int main(void){
                 int rb_id = game_object.second.box_rigidbody_2d_id;
 
                 if ( 
-                    physic::check_point_box_overlap(
+                    physic::dim2::check_point_box_overlap(
                         inputs::mouse_last_click.world_x_pos,
                         inputs::mouse_last_click.world_y_pos,
                         game_data::box_rigidbodies[rb_id].x,

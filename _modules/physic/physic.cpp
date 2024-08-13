@@ -3,13 +3,89 @@
 
 #include <iostream>
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                           DINAMYC SIMULATION
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// =========================================================================|
+//                           numeric_integration
+// =========================================================================|
+
+void physic::dim2::numeric_integration(rigidbody& rb, float delta_time, vec force , float torque){
+    
+    // ====================================================================================
+    // Quantities references
+
+    vec& pos = rb.pos;
+    vec& vel = rb.vel;
+    float& angle = rb.angle;
+    float& w = rb.w;
+    float& mass = rb.m;
+    float& I = rb.I;
+
+    // ====================================================================================
+    // Function body
+
+    // Update rigidbody positions
+    pos.x = pos.x + vel.x * delta_time;
+    pos.y = pos.y + vel.y * delta_time;
+
+    // Update rigidbody velociitiy
+    vel.x = vel.x + force.x/rb.m * delta_time;
+    vel.y = vel.y + force.y/rb.m * delta_time;
+
+    // Update rigidbody angle
+    angle = angle + w * delta_time;
+
+    // Update rigidbody angular speed
+    w = w + torque/I;
+
+}
+
+// =========================================================================|
+//                             apply_impulse
+// =========================================================================|
+
+void physic::dim2::apply_impulse(rigidbody& rb, impulse impulse){
+
+    // ====================================================================================
+    // Quantities references
+
+    vec imp { impulse.d.x * impulse.mag, impulse.d.y * impulse.mag };
+    vec q {impulse.q};
+    vec& vel = rb.vel;
+    float& w = rb.w;
+    float& mass = rb.m;
+    float& I = rb.I;
+
+    // ====================================================================================
+    // Function body
+
+    // Impulse effect on rigidbody velocity:
+    vel.x = vel.x + (1/mass) * imp.x;
+    vel.y = vel.y + (1/mass) * imp.y; 
+
+    // Impulse effect on rigidbody angular velocity:
+    vec imp_torq = q CROSS imp;
+    w = w + I * imp_torq.z;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                           DINAMYC SIMULATION
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                           DINAMYC SIMULATION
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 std::vector<physic::contact_data> physic::box_contacts;
 
-bool physic::check_point_box_overlap(
+bool physic::dim2::check_pointbox_collision(
     float point_x, float point_y, 
     float box_x, float box_y, float box_zangle, 
-    float collider_width,
-    float collider_height
+    float box_width,
+    float box_height
     ){
 
     // Declare tmp matrices
@@ -29,10 +105,10 @@ bool physic::check_point_box_overlap(
 
     // Check if it overlaps with the box
     if( 
-        point_model_space[0] > -collider_width/2 &&
-        point_model_space[0] < collider_width/2 &&
-        point_model_space[1] > -collider_height/2 &&
-        point_model_space[1] < collider_height/2 )
+        point_model_space[0] > -box_width/2 &&
+        point_model_space[0] < box_width/2 &&
+        point_model_space[1] > -box_height/2 &&
+        point_model_space[1] < box_height/2 )
     {
         return true;
     }
@@ -42,37 +118,9 @@ bool physic::check_point_box_overlap(
 
 }
 
-void physic::numeric_integration(rigidbody_2d& rb, float delta_time, float tot_fx, float tot_fy, float tot_torq){
-      
-    // Update positions
-    rb.x = rb.x + rb.vx * delta_time;
-    rb.y = rb.y + rb.vy * delta_time;
 
-    // Update velociities
-    rb.vx = rb.vx + tot_fx/rb.m * delta_time;
-    rb.vy = rb.vy + tot_fy/rb.m * delta_time;
 
-    // Update angle
-    rb.an = rb.an + rb.w * delta_time;
 
-    // Update angular speed
-    rb.w = rb.w + tot_torq/rb.I;
-
-}
-
-void physic::apply_impulse(rigidbody_2d& rb, impulse imp){
-
-    // Linear Effect:
-    rb.vx += (1/rb.m) * imp.d_x * imp.mag;
-    rb.vy += (1/rb.m) * imp.d_y * imp.mag; 
-
-    // Angular Effect:
-
-    // imp_torq = q_rel cross imp
-    float imp_torq = imp.q_x*imp.d_y*imp.mag - imp.q_y*imp.d_x*imp.mag;
-    rb.w += rb.I * imp_torq;
-
-}
 
 void physic::generate_2dbox_contacts_data(std::vector<box_rigidbody_2d>& boxes){
 
