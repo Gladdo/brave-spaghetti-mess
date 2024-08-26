@@ -74,13 +74,17 @@ namespace physic{
 
     typedef std::array<float, 16> mat;
 
-    void array_to_mat4x4(mat4x4& out, mat& in){
-        in[4] = 2;
+    void mat_to_mat4x4(mat4x4& m4x4, mat& m){
         for(int i = 0; i < 4; i ++)
             for(int j = 0; j < 4; j++)
-                out[i][j] = in[i*4+j];
+                m4x4[i][j] = m[i*4+j];
     }
 
+    void mat4x4_to_mat(mat4x4& m4x4, mat& m){
+        for(int i = 0; i < 4; i ++)
+            for(int j = 0; j < 4; j++)
+                m[i*4+j] = m4x4[i][j];
+    }
 
     struct mat{
         float matrix [16];
