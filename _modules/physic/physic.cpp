@@ -1,7 +1,33 @@
 #include "physic.h"
-#include "linmath.h"
-
 #include <iostream>
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                 UTILITY
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// =========================================================================|
+//                          build_model_matrix
+// =========================================================================|
+// Builds a 4x4 model matrix representing a 2d position (and orientation)
+// inside a 3d space (ie we also have a z position but it is kept constant). 
+//
+void physic::dim2::build_model_matrix(mat4x4& model_matrix, float x_pos, float y_pos, float z_angle){
+    // Create tmp matrices
+    mat4x4 identity;
+    mat4x4 rotation;
+    mat4x4 translation;
+ 
+    // Create the rotation matrix R
+    mat4x4_identity(identity);
+    mat4x4_rotate_Z(rotation, identity, z_angle);
+
+    // Create the traslation matrix T
+    mat4x4_identity(translation);
+    mat4x4_translate(translation, x_pos, y_pos, 0);
+
+    // Find the model matrix M = T * R
+    mat4x4_mul(model_matrix, translation, rotation);
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                           DINAMYC SIMULATION
@@ -10,105 +36,141 @@
 // =========================================================================|
 //                           numeric_integration
 // =========================================================================|
+// Update a rigidbody data to simulate its unconstrained motion for the time
+// step delta_time. This functions should be called once per frame. 
+// Force and Torque represent the total force and total torque being applied 
+// on the rigidbody in the current frame; they determine how velocities
+// should change.
+// The update use the following equations:
+//
+//  - Position: 
+//      pos = pos + vel * dt
+//
+//  - Velocity:
+//      vel = vel + force/mass * dt
+//
+//  - Orientation:
+//      angle = angle + w * dt
+//
+//  - Angular velocity:
+//      w = w + torque/inertiamoment
+//
+void physic::dim2::numeric_integration(rigidbody& rb, float delta_time, float force_x, float force_y , float torque){
 
-void physic::dim2::numeric_integration(rigidbody& rb, float delta_time, vec force , float torque){
-    
-    // ====================================================================================
-    // Quantities references
+    // ------------------------------------------------------------------------------------
+    // - Position Update
+    rb.pos_x = rb.pos_x + rb.vel_x * delta_time;
+    rb.pos_y = rb.pos_y + rb.vel_y * delta_time;
 
-    vec& pos = rb.pos;
-    vec& vel = rb.vel;
-    float& angle = rb.angle;
-    float& w = rb.w;
-    float& mass = rb.m;
-    float& I = rb.I;
+    // ------------------------------------------------------------------------------------
+    // - Velocity Update
+    rb.vel_x = rb.vel_x + force_x/rb.m * delta_time;
+    rb.vel_y = rb.vel_y + force_y/rb.m * delta_time;
 
-    // ====================================================================================
-    // Function body
+    // ------------------------------------------------------------------------------------
+    // - Orientation Update
+    rb.angle = rb.angle + rb.w * delta_time;
 
-    // Update rigidbody positions
-    pos.x = pos.x + vel.x * delta_time;
-    pos.y = pos.y + vel.y * delta_time;
-
-    // Update rigidbody velociitiy
-    vel.x = vel.x + force.x/rb.m * delta_time;
-    vel.y = vel.y + force.y/rb.m * delta_time;
-
-    // Update rigidbody angle
-    angle = angle + w * delta_time;
-
-    // Update rigidbody angular speed
-    w = w + torque/I;
+    // ------------------------------------------------------------------------------------
+    // - Angular Velocity Update
+    rb.w = rb.w + torque/rb.I;
 
 }
 
 // =========================================================================|
 //                             apply_impulse
 // =========================================================================|
-
+// Change a rigidbody data to simulate the response to an istant impulse 
+// applied to it; an impulse applied to a rigidbody produce an instant 
+// change to its velocity and angular velocity.
+// The effect of the impulse on those quantities is described with the
+// following equations:
+// 
+//  - Velocity:
+//      vel = vel + impulse/mass
+//
+//  - Angular Velocity:
+//      w = w + inertia_moment * (q ∧ impulse)
+//
 void physic::dim2::apply_impulse(rigidbody& rb, impulse impulse){
 
-    // ====================================================================================
-    // Quantities references
+    // ------------------------------------------------------------------------------------
+    // Velocity Update
+    rb.vel_x = rb.vel_x + (1/rb.m) * impulse.d_x * impulse.mag;
+    rb.vel_y = rb.vel_y + (1/rb.m) * impulse.d_y * impulse.mag; 
 
-    vec imp { impulse.d.x * impulse.mag, impulse.d.y * impulse.mag };
-    vec q {impulse.q};
-    vec& vel = rb.vel;
-    float& w = rb.w;
-    float& mass = rb.m;
-    float& I = rb.I;
+    // ------------------------------------------------------------------------------------
+    // Angular velocity update
 
-    // ====================================================================================
-    // Function body
-
-    // Impulse effect on rigidbody velocity:
-    vel.x = vel.x + (1/mass) * imp.x;
-    vel.y = vel.y + (1/mass) * imp.y; 
-
-    // Impulse effect on rigidbody angular velocity:
-    vec imp_torq = q CROSS imp;
-    w = w + I * imp_torq.z;
+    // Find the impulsive torque (q ∧ impulse)
+    float imp_torq_z = impulse.q_x * impulse.d_x * impulse.mag - impulse.q_y * impulse.d_y * impulse.mag;
+    
+    // Angular velocity update
+    rb.w = rb.w + rb.I * imp_torq_z;
 
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                           DINAMYC SIMULATION
+//                                          COLLISION DETECTION
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                           DINAMYC SIMULATION
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-std::vector<physic::contact_data> physic::box_contacts;
-
+// =========================================================================|
+//                         check_pointbox_collision
+// =========================================================================|
+// Return either true or false if the point is inside the box defined by the
+// function parameters.
+// The check is done with the following rationale:
+// 
+//  - We find the inverse model matrix of the box
+//
+//  - We use the previous inverse matrix to find the coordinates of the point
+//    relative to the model space of the box: in this space the box is in the
+//    origin and has no rotation, hence the penetration check becomes trivial
+//
+//  - We check if the new coordinates of the points are inside the box
+//    described in model space
+//
+// NB: The positional data is considered in world space for both elements
+//
 bool physic::dim2::check_pointbox_collision(
     float point_x, float point_y, 
     float box_x, float box_y, float box_zangle, 
     float box_width,
     float box_height
-    ){
+){
 
-    // Declare tmp matrices
+    // ------------------------------------------------------------------------------------
+    // Build the inverse of the box model matrix
+
+    // Declare matrices
     mat4x4 model_matrix;
     mat4x4 inverse_model_matrix;
 
     // Build the model matrix
-    build_2d_model_matrix(model_matrix, box_x, box_y, box_zangle);
+    build_model_matrix(model_matrix, box_x, box_y, box_zangle);
 
     // Invert the model matrix
     mat4x4_invert(inverse_model_matrix, model_matrix);
 
-    // Find the point coordinate in model space
-    vec4 point_model_space;
-    vec4 point {point_x, point_y, 0 , 1};
-    mat4x4_mul_vec4(point_model_space, inverse_model_matrix, point);
+    // ------------------------------------------------------------------------------------
+    // Find the point position inside the object space of the box, where the box is
+    // considered aligned with the axis of the space
 
-    // Check if it overlaps with the box
+    // Declare data
+    vec4 point {point_x, point_y, 0 , 1};
+    vec4 object_space_position;
+    
+    // Find the point coordinate in model space
+    mat4x4_mul_vec4(object_space_position, inverse_model_matrix, point);
+
+    // ------------------------------------------------------------------------------------
+    // Check if object_space_position is inside the axis aligned box
+
     if( 
-        point_model_space[0] > -box_width/2 &&
-        point_model_space[0] < box_width/2 &&
-        point_model_space[1] > -box_height/2 &&
-        point_model_space[1] < box_height/2 )
+        object_space_position[0] > -box_width/2 &&
+        object_space_position[0] < box_width/2 &&
+        object_space_position[1] > -box_height/2 &&
+        object_space_position[1] < box_height/2 )
     {
         return true;
     }
@@ -118,10 +180,86 @@ bool physic::dim2::check_pointbox_collision(
 
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                   COLLISION DETECTION: CONTACT GENERATION
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+std::vector<physic::dim2::contact_data> physic::dim2::contacts;
 
+// =========================================================================|
+//                         collision_dispatcher
+// =========================================================================|
+// Check all the elements inside the world_bodies vector with each other and
+// dispatch the appropriate collision detection and contact generation 
+// function to find the collisions between them.
+// The generated contatcs are inserted inside the the "contacts" vector.
+//
+// This function deals with both the broad phase and the narrow phase.
+//
+void physic::dim2::collision_dispatcher(std::vector<std::pair<rigidbody, collider>> world_bodies){
+    
+    // ------------------------------------------------------------------------------------
+    // Define how to loop the world_bodies vector
 
+    // For each element in the vector..
+    for(int i = 0; i < world_bodies.size()-1; i ++){
 
+        // ..step in all the elements with higher position in the vector 
+        for(int j = i+1; j < world_bodies.size(); j++ ){
+            
+            // ------------------------------------------------------------------------------------
+            // Data
+
+            // Reference to the world bodies
+            std::pair<rigidbody, collider>& A = world_bodies[i];
+            std::pair<rigidbody, collider>& B = world_bodies[j];
+
+            // Eventual new contact between the shapes
+            contact_data new_contact;
+
+            // ------------------------------------------------------------------------------------
+            // Check the specific type of colliders and dispatch the correct function
+
+            // BOX BOX
+            if( A.second.type == collider::BOX && B.second.type == collider::BOX){
+                
+                // Eventual broadphase function (not worth with simple contact generation functions) 
+                // check_boxbox_collision()
+
+                // Contact generation function
+                new_contact = generate_boxbox_contactdata_naive_alg(A.first, B.first, (collider_box&) A.second, (collider_box&) B.second);
+            }
+
+            // ------------------------------------------------------------------------------------
+            // If the contact exists add it to the contact list that will be solved in this frame
+
+            if (new_contact.pen <= 0){
+                contacts.push_back(new_contact);
+            }
+
+        }
+    }
+
+}
+
+// =========================================================================|
+//                  generate_boxbox_contactdata_naive_alg
+// =========================================================================|
+// Return eventual contact data between two boxes. If the contact exists,
+// the returned contact has a penetration depth > 0; otherwise the contact
+// does not exists.
+//
+// The generation is done with a naive (potentially inefficent) algorithm;
+// for better performance use Extended-GJK or other optimized algorithm for 
+// contact generation.  
+//
+physic::dim2::contact_data physic::dim2::generate_boxbox_contactdata_naive_alg(
+    rigidbody& A, rigidbody& B, collider_box& coll_A, collider_box& coll_B
+){
+    
+}
+
+/* 
 void physic::generate_2dbox_contacts_data(std::vector<box_rigidbody_2d>& boxes){
 
     // Check for box-box collisions
@@ -366,24 +504,6 @@ void physic::get_max_contact_AtoB(contact_data& out_max_contact, box_rigidbody_2
     }
 }
 
-void physic::build_2d_model_matrix(mat4x4& model_matrix, float x_pos, float y_pos, float z_angle){
-    // Create tmp matrices
-    mat4x4 identity;
-    mat4x4 rotation;
-    mat4x4 translation;
- 
-    // Create rotation matrix R
-    mat4x4_identity(identity);
-    mat4x4_rotate_Z(rotation, identity, z_angle);
-
-    // Create traslation matrix T
-    mat4x4_identity(translation);
-    mat4x4_translate(translation, x_pos, y_pos, 0);
-
-    // Find M = T * R
-    mat4x4_mul(model_matrix, translation, rotation);
-}
-
 void physic::solve_2dbox_contacts_velocities(){
 
     if(box_contacts.size() != 0){
@@ -549,4 +669,4 @@ void physic::solve_2dbox_contacts_interpenetration_linear_proj(){
 
     }
 
-}
+} */

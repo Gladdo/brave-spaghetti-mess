@@ -2,7 +2,7 @@
 #include <array>
 #include "linmath.h"
 
-namespace physic{
+/* namespace physic{
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                     3D MATHEMATIC ELEMENTS DEFINITIONS
@@ -159,4 +159,4 @@ namespace physic{
        res.set_element(2,3, z);
        return res;
     }
-}
+} */
