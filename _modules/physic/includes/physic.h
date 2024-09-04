@@ -120,7 +120,9 @@ namespace physic{
         void collision_dispatcher(std::vector<std::pair<rigidbody, collider>> world_bodies);
 
         // Restituisce il contatto del vertice di A con profondità maggiore in B
-        contact_data generate_boxbox_contactdata_naive_alg(rigidbody& A, rigidbody& B, collider_box& coll_A, collider_box& coll_B);
+        contact_data generate_boxbox_contactdata_naive_alg(rigidbody& A, rigidbody& B, collider_box& coll_A, collider_box& coll_B);        
+        contact_data generate_boxboxvertices_max_contactdata(rigidbody& A, rigidbody& B, collider_box& coll_A, collider_box& coll_B);
+        contact_data generate_pointbox_contactdata_naive_alg(float w_point_x, float w_point_y, rigidbody& rb, collider_box& coll);
 
 /*
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

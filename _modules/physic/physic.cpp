@@ -181,7 +181,7 @@ bool physic::dim2::check_pointbox_collision(
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                   COLLISION DETECTION: CONTACT GENERATION
+//                       COLLISION DETECTION: CONTACT GENERATION - Collision dispatcher
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 std::vector<physic::dim2::contact_data> physic::dim2::contacts;
@@ -231,9 +231,9 @@ void physic::dim2::collision_dispatcher(std::vector<std::pair<rigidbody, collide
             }
 
             // ------------------------------------------------------------------------------------
-            // If the contact exists add it to the contact list that will be solved in this frame
+            // If the contact exists (penetration > 0) add it to the contact list that will be solved in this frame
 
-            if (new_contact.pen <= 0){
+            if (new_contact.pen > 0){
                 contacts.push_back(new_contact);
             }
 
@@ -242,21 +242,322 @@ void physic::dim2::collision_dispatcher(std::vector<std::pair<rigidbody, collide
 
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//             COLLISION DETECTION: CONTACT GENERATION - BoxBox contact generation naive algorithm
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // =========================================================================|
 //                  generate_boxbox_contactdata_naive_alg
 // =========================================================================|
-// Return eventual contact data between two boxes. If the contact exists,
-// the returned contact has a penetration depth > 0; otherwise the contact
-// does not exists.
+// Return eventual contact data between two boxes. If a contact exists, the
+// returned contact data has a penetration depth > 0; otherwise the two
+// boxes are not in contact.
 //
 // The generation is done with a naive (potentially inefficent) algorithm;
 // for better performance use Extended-GJK or other optimized algorithm for 
 // contact generation.  
 //
+// Algorithm overview:
+// Given the two boxes A and B:
+//      - Loop over all vertices of A
+//          - For every vertex, check if and how it collides with the
+//            collider of B; to do so:
+//              - Check if the vertex is inside B; if it is continue
+//                otherwise skip to the next vertex.
+//              - Se il vertice è dentro B, stabilisci in che modo è in
+//                contatto:
+//                  - Controlla come il vertice si relaziona ad ogni edge
+//                    di B.
+//                  - Considera l'edge di B rispetto al quale il vertice ha 
+//                    penetrazione minima.
+//                  - Stabilisci i dati di contatto del vertice in relazione 
+//                    a tale edge.
+//          - Tieni traccia di quale vertice di A entra in contatto con B
+//            con la penetrazione massima.
+//      - Ripeti il precedente loop per tutti i vertici di B
+//
+// TLDR: 
+//      - controlla se e come i vertici di A entrano in contatto con B
+//      - controlla se e come i vertici di B entrano in contatto con A
+//      - Tra tutti i possibili vertici in collisione dei due rigidbody, 
+//        il contatto generato sarà tra il vertice di massima penetrazione  
+//        di uno dei rigidbody e il collider dell'altro rigidbody.
+//
 physic::dim2::contact_data physic::dim2::generate_boxbox_contactdata_naive_alg(
     rigidbody& A, rigidbody& B, collider_box& coll_A, collider_box& coll_B
 ){
+
+    // hold the resulting contact
+    contact_data res_contact;
+    res_contact.pen = 0;
+
+    // ------------------------------------------------------------------------------------
+    // Pick the contact data of the vertex of A which has the biggest penetration in B
+    // Pick the contact data of the vertex of B which has the biggest penetration in A
+
+    contact_data AB_contact = generate_boxboxvertices_max_contactdata(A, B, coll_A, coll_B);
+    contact_data BA_contact = generate_boxboxvertices_max_contactdata(B, A, coll_B, coll_A);
+
+    // ------------------------------------------------------------------------------------
+    // If there is no contact, return res_contact with 0 penetration depth
     
+    if (AB_contact.pen <= 0 && BA_contact.pen <= 0){
+        return res_contact;
+    }
+
+    // ------------------------------------------------------------------------------------
+    // Otherwise return the contact with the biggest penetration between AB_contact and
+    // BA_contact
+    
+    if (AB_contact.pen > BA_contact.pen) {
+        res_contact = AB_contact;
+        res_contact.rb_a = &A;
+        res_contact.rb_b = &B;
+    }else{
+        res_contact = BA_contact;
+        res_contact.rb_a = &B;
+        res_contact.rb_b = &A;
+    }
+
+    return res_contact;
+
+}
+
+// =========================================================================|
+//                  generate_boxboxvertices_max_contactdata
+// =========================================================================|
+// Check for contacts between every vertex of A into the collider of B.
+// Writes in res_contact the contact with the biggest penetration.
+//
+physic::dim2::contact_data physic::dim2::generate_boxboxvertices_max_contactdata(
+    rigidbody& A, rigidbody& B, collider_box& coll_A, collider_box& coll_B
+){
+    
+    // ------------------------------------------------------------------------------------
+    // Setup the data needed
+
+    // hold the resulting contact
+    contact_data res_contact;
+    res_contact.pen = 0;
+
+    // Build A model matrix
+    mat4x4 A_model_matrix;
+    build_model_matrix(A_model_matrix, A.pos_x, A.pos_y, A.angle);
+    
+    // Define the vertices of the collider A (in model space)
+    vec4 A_collider_vertices [4] = {
+        {   -coll_A.width/2, -coll_A.height/2, 0, 1},
+        {    coll_A.width/2, -coll_A.height/2, 0, 1},
+        {    coll_A.width/2,  coll_A.height/2, 0, 1},
+        {   -coll_A.width/2,  coll_A.height/2, 0, 1}
+    };
+
+    // ------------------------------------------------------------------------------------
+    // Loop over the vertices of A and keep track of the vertex with the bigger
+    // penetration
+
+    // For each vertex of A..
+    for(int i = 0; i < 4; i ++){
+        
+        // Write in point the world coordinates of the current vertex
+        vec4 point;
+        mat4x4_mul_vec4(point, A_model_matrix, A_collider_vertices[i]);
+
+        // Create the variable that hold the contact data of the current vertex
+        contact_data vertex_contact;
+        vertex_contact.pen = 0;
+        vertex_contact.qa_x = A_collider_vertices[i][0];
+        vertex_contact.qa_y = A_collider_vertices[i][1];
+        vertex_contact.rb_a = &A;
+        vertex_contact.rb_b = &B;
+
+        // Calculate if the current vertex is in contact and how.
+        // If it isn't in contact the penetration depth is set to a value <= 0
+        vertex_contact = generate_pointbox_contactdata_naive_alg(point[0], point[1], B, coll_B);
+
+        // If the vertex is in contact and its penetration is bigger than previous vertices,
+        // keep track of the current vertex.
+        if ( vertex_contact.pen > 0 && res_contact.pen < vertex_contact.pen ) {
+            res_contact = vertex_contact;
+        }
+
+    }
+  
+    return res_contact;
+
+}
+
+// =========================================================================|
+//                  generate_pointbox_contactdata_naive_alg
+// =========================================================================|
+// Controlla se e come il punto (world_point_x, world_point_y) è in
+// collisione con il collider coll ed eventualmente genera i dati di
+// contatto.
+//
+// Il contatto viene generato considerando il punto in collisione con
+// l'edge di B rispetto al quale la penetrazione è minima.
+//
+physic::dim2::contact_data physic::dim2::generate_pointbox_contactdata_naive_alg(
+    float world_point_x, float world_point_y, rigidbody& rb, collider_box& coll
+){
+    // hold the resulting contact
+    contact_data res_contact;
+    res_contact.pen = 0;
+
+    // ------------------------------------------------------------------------------------
+    // Find the point coordinates in rb model space
+
+    // Find the model matrix of rb
+    mat4x4 model_matrix;
+    build_model_matrix(model_matrix, rb.pos_x, rb.pos_y, rb.angle);
+
+    // Find the inverse model matrix of rb
+    mat4x4 inverse_model_matrix;
+    mat4x4_invert(inverse_model_matrix, model_matrix);
+
+    // Define the point
+    vec4 world_point = { world_point_x, world_point_y, 0, 1};
+    vec4 point;
+
+    // Find the coordinates of world_point in rb model space
+    mat4x4_mul_vec4(point, inverse_model_matrix, world_point);
+    float point_x = point[0];
+    float point_y = point[1];
+
+    // ------------------------------------------------------------------------------------
+    // If the point is outside rb, return a contact with 0 penetration depth 
+    if( !(
+        point_x > -coll.width/2     &&
+        point_x <  coll.width/2     &&
+        point_y > -coll.height/2    &&
+        point_y <  coll.height/2    
+    )){
+        return res_contact;
+    }
+
+    // ------------------------------------------------------------------------------------
+    // Otherwise, generate contact data relative to the shallowest edge
+
+    // Find the penetration with respect to the different edges
+    // Note: the values are calculated considering the origin on the center of the 
+    // collider
+    float leftpen  =        point_x + coll.width/2     ; 
+    float toppen   = abs(   point_y - coll.height/2   );
+    float rightpen = abs(   point_x - coll.width/2    );
+    float bottpen  =        point_y + coll.height/2    ;
+
+    // Check for the shallowest edge penetration
+    float shallpen;
+    shallpen = leftpen;
+    shallpen = std::min( toppen,    shallpen);
+    shallpen = std::min( rightpen,  shallpen);
+    shallpen = std::min( bottpen,   shallpen);
+
+    // ------------------------------------------------------------------------------------
+    // Left edge contact setup
+    if (shallpen == leftpen) {
+    
+        // Calculate the normal
+        vec4 ws_n_vec;              // Normal vector in world space
+        vec4 ms_n_vec;              // Normal vector in rb model space
+        ms_n_vec[0] = -1;
+        ms_n_vec[1] = 0;
+        ms_n_vec[2] = 0;
+        ms_n_vec[3] = 0;
+        mat4x4_mul_vec4(ws_n_vec, model_matrix, ms_n_vec);
+
+        // Setup the contact parameters
+        res_contact.n_x = ws_n_vec[0];
+        res_contact.n_y = ws_n_vec[1];
+        res_contact.pen = shallpen;
+        // res_contact.qa_x: this is setup in the calling function. 
+        // res_contact.qa_y: this is setup in the calling function.
+        res_contact.qb_x = - coll.width/2;
+        res_contact.qb_y = point_y;
+        // res_contact.rb_a: this is setup in the calling function.
+        // res_contact.rb_b: this is setup in the calling function.
+
+    }
+
+    // ------------------------------------------------------------------------------------
+    // Top edge contact setup
+    if (shallpen == toppen) {
+
+        // Calculate the normal
+        vec4 ws_n_vec;              // Normal vector in world space
+        vec4 ms_n_vec;              // Normal vector in rb model space
+        ms_n_vec[0] = 0;
+        ms_n_vec[1] = 1;
+        ms_n_vec[2] = 0;
+        ms_n_vec[3] = 0;
+        mat4x4_mul_vec4(ws_n_vec, model_matrix, ms_n_vec);
+
+        // Setup the contact parameters
+        res_contact.n_x = ws_n_vec[0];
+        res_contact.n_y = ws_n_vec[1];
+        res_contact.pen = shallpen;
+        // res_contact.qa_x: this is setup in the calling function. 
+        // res_contact.qa_y: this is setup in the calling function.
+        res_contact.qb_x = point_x;
+        res_contact.qb_y = coll.height/2;
+        // res_contact.rb_a: this is setup in the calling function.
+        // res_contact.rb_b: this is setup in the calling function.
+
+    }
+    
+    // ------------------------------------------------------------------------------------
+    // Right edge contact setup
+    if (shallpen == rightpen) {
+
+        // Calculate the normal
+        vec4 ws_n_vec;              // Normal vector in world space
+        vec4 ms_n_vec;              // Normal vector in rb model space
+        ms_n_vec[0] = 1;
+        ms_n_vec[1] = 0;
+        ms_n_vec[2] = 0;
+        ms_n_vec[3] = 0;
+        mat4x4_mul_vec4(ws_n_vec, model_matrix, ms_n_vec);
+
+        // Setup the contact parameters
+        res_contact.n_x = ws_n_vec[0];
+        res_contact.n_y = ws_n_vec[1];
+        res_contact.pen = shallpen;
+        // res_contact.qa_x: this is setup in the calling function. 
+        // res_contact.qa_y: this is setup in the calling function.
+        res_contact.qb_x = coll.width/2;
+        res_contact.qb_y = point_y;
+        // res_contact.rb_a: this is setup in the calling function.
+        // res_contact.rb_b: this is setup in the calling function.
+
+    }
+
+    // ------------------------------------------------------------------------------------
+    // Bottom edge contact setup
+    if (shallpen == bottpen) {
+
+        // Calculate the normal
+        vec4 ws_n_vec;              // Normal vector in world space
+        vec4 ms_n_vec;              // Normal vector in rb model space
+        ms_n_vec[0] = 0;
+        ms_n_vec[1] = -1;
+        ms_n_vec[2] = 0;
+        ms_n_vec[3] = 0;
+        mat4x4_mul_vec4(ws_n_vec, model_matrix, ms_n_vec);
+
+        // Setup the contact parameters
+        res_contact.n_x = ws_n_vec[0];
+        res_contact.n_y = ws_n_vec[1];
+        res_contact.pen = shallpen;
+        // res_contact.qa_x: this is setup in the calling function. 
+        // res_contact.qa_y: this is setup in the calling function.
+        res_contact.qb_x = point_x;
+        res_contact.qb_y = - coll.height/2;
+        // res_contact.rb_a: this is setup in the calling function.
+        // res_contact.rb_b: this is setup in the calling function.
+
+    }
+        
+    return res_contact;
 }
 
 /* 
