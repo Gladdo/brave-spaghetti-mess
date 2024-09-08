@@ -196,7 +196,7 @@ std::vector<physic::dim2::contact_data> physic::dim2::contacts;
 //
 // This function deals with both the broad phase and the narrow phase.
 //
-void physic::dim2::collision_dispatcher(std::vector<std::pair<rigidbody, collider>> world_bodies){
+void physic::dim2::collision_dispatcher(std::vector<std::pair<rigidbody*, collider*>>& world_bodies){
     
     // ------------------------------------------------------------------------------------
     // Define how to loop the world_bodies vector
@@ -210,9 +210,11 @@ void physic::dim2::collision_dispatcher(std::vector<std::pair<rigidbody, collide
             // ------------------------------------------------------------------------------------
             // Data
 
-            // Reference to the world bodies
-            std::pair<rigidbody, collider>& A = world_bodies[i];
-            std::pair<rigidbody, collider>& B = world_bodies[j];
+            // References to the world bodies
+            rigidbody& A = *(world_bodies[i].first);
+            collider& coll_A = *(world_bodies[i].second);
+            rigidbody& B = *(world_bodies[j].first);
+            collider& coll_B = *(world_bodies[j].second);
 
             // Eventual new contact between the shapes
             contact_data new_contact;
@@ -221,13 +223,13 @@ void physic::dim2::collision_dispatcher(std::vector<std::pair<rigidbody, collide
             // Check the specific type of colliders and dispatch the correct function
 
             // BOX BOX
-            if( A.second.type == collider::BOX && B.second.type == collider::BOX){
+            if( coll_A.type == collider::BOX && coll_B.type == collider::BOX){
                 
                 // Eventual broadphase function (not worth with simple contact generation functions) 
                 // check_boxbox_collision()
 
                 // Contact generation function
-                new_contact = generate_boxbox_contactdata_naive_alg(A.first, B.first, (collider_box&) A.second, (collider_box&) B.second);
+                new_contact = generate_boxbox_contactdata_naive_alg(A, B, (collider_box&) coll_A, (collider_box&) coll_B);
             }
 
             // ------------------------------------------------------------------------------------

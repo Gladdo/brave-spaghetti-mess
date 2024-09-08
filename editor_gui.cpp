@@ -94,7 +94,10 @@ void gui::render_gui(){
                     {
                     
                         game_data::transform_2d& t = box_go.transform_2d;
-                        physic::box_rigidbody_2d& rb = game_data::box_rigidbodies.at( box_go.box_rigidbody_2d_id );
+                        
+                        //physic::box_rigidbody_2d& rb = game_data::box_rigidbodies.at( box_go.box_rigidbody_2d_id );
+                        physic::dim2::rigidbody& rb = game_data::world_2d_box_rigidbodies[box_go.rigidbody_2d_box_id].rb;
+
                         ImGui::Text(" position: %f %f ", t.world_x_pos, t.world_y_pos );
 
                         static float slider_f;
@@ -102,7 +105,7 @@ void gui::render_gui(){
                         if(ImGui::SliderFloat("Slider (Angle)", &slider_f, 0.0f, 360.0f, "%.3f", flags)){
                             float rad_angle = slider_f * (2.0f * 3.14 / 360.0f);
                             t.world_z_angle = rad_angle;
-                            rb.an = rad_angle;
+                            rb.angle = rad_angle;
                         }
 
                         // Show starting impulses configurations only if the simulation is not running.
@@ -122,7 +125,7 @@ void gui::render_gui(){
                             // Add (or modify the existing) starting impulse of the object with the current slider values
                             if (ImGui::Button("Add Impulse")){
                                 
-                                // If the rb has not a starting impulse, add it
+                                /* // If the rb has not a starting impulse, add it
                                 if(game_data::starting_impulses.find(box_go.box_rigidbody_2d_id)==game_data::starting_impulses.end()){
                                     
                                     game_data::starting_impulses.insert( {box_go.box_rigidbody_2d_id, {}} );
@@ -135,7 +138,7 @@ void gui::render_gui(){
                                 game_data::starting_impulses.at(box_go.box_rigidbody_2d_id).q_y = imp_q_y;
                                 game_data::starting_impulses.at(box_go.box_rigidbody_2d_id).d_x = imp_d_x;
                                 game_data::starting_impulses.at(box_go.box_rigidbody_2d_id).d_y = imp_d_y;
-                                game_data::starting_impulses.at(box_go.box_rigidbody_2d_id).mag = imp_mag;
+                                game_data::starting_impulses.at(box_go.box_rigidbody_2d_id).mag = imp_mag; */
                             
                             }
                         }

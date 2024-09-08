@@ -95,6 +95,12 @@ int main(void){
     { 
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                               EDITOR LOOP
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                               MANAGE INPUTS
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -107,35 +113,38 @@ int main(void){
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                               PRE LOGIC UPDATE
+        //                                           MANAGE MOUSE USER CLICK
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        // ====================================================================================
-        // If left clicked, iterate over all box_gameobjects and check if the mouse hits a rigidbody
-        // If it does, set event_is_dragging_active and register the hit game object in dragged_game_object_id
+        // If the user left click anywhere on the app client, check if the click happens to be on the scene tab.
+        // If it is, translate the click coordinates from screen space to game world coordinate; then iterate over 
+        // all box_gameobjects to check if the mouse hits a rigidbody.
+        // If it does set the flag "event_is_dragging_active" and store in "dragged_game_object_id" the id of the game 
+        // object hit by the mouse click
+        
         if (inputs::mouse_left_button == inputs::PRESS && inputs::check_if_click_is_on_scene()){
 
-            for( auto& game_object : game_data::box_gameobjects) {
+            for( auto& game_object : game_data::world_gameobjects_box) {
                 
                 int go_id = game_object.first;
-                int rb_id = game_object.second.box_rigidbody_2d_id;
+                game_data::box_gameobject& bgo = game_object.second;
+                physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_box[bgo.rigidbody_2d_box_id].rb;
+                physic::dim2::collider_box& coll = game_data::world_rigidbodies_2d_box[bgo.rigidbody_2d_box_id].coll;
 
                 if ( 
-                    physic::dim2::check_point_box_overlap(
+                    physic::dim2::check_pointbox_collision(
                         inputs::mouse_last_click.world_x_pos,
                         inputs::mouse_last_click.world_y_pos,
-                        game_data::box_rigidbodies[rb_id].x,
-                        game_data::box_rigidbodies[rb_id].y,
-                        game_data::box_rigidbodies[rb_id].an,
-                        game_data::box_rigidbodies[rb_id].width,
-                        game_data::box_rigidbodies[rb_id].height) 
+                        rb.pos_x,
+                        rb.pos_y,
+                        rb.angle,
+                        coll.width,
+                        coll.height) 
                 ){
                     game_data::event_is_dragging_active = true;
                     game_data::dragged_game_object_id = go_id;
                 }
 
             }
-
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -148,12 +157,16 @@ int main(void){
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                               PHYSIC UPDATE
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Steps:
+        //  - Update all rigidbodies data with numeric integration
+        //  - Generate contacts with collision detection between all rigidbody colliders
+        //  - Update all gameobject's transforms with the updated rigidbody data
 
         if(game_data::is_simulation_running && step){
             // ====================================================================================
             // Manage starting impulses
 
-            if(game_data::starting_impulses.size() != 0){
+            /* if(game_data::starting_impulses.size() != 0){
                 
                 // Apply starting impulses
                 for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
@@ -165,59 +178,71 @@ int main(void){
                     }
 
                 }
-            }
+            } */
 
             // ====================================================================================
-            // Iterate numeric integrator over all box_rigidbody_2ds
-            for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
-                physic::numeric_integration(game_data::box_rigidbodies[i], delta_time.count(), 0, 0, 0);
+            // Update all rigidbodies inside "world_rigidbodies_2d_box"
+
+            for( int i = 0; i < game_data::ARRAY_SIZE; i++ ) {
+                if ( !game_data::world_rigidbodies_2d_box[i].free )
+                    physic::dim2::numeric_integration(game_data::world_rigidbodies_2d_box[i].rb, delta_time.count(), 0, 0, 0);
             }
 
             // ====================================================================================
             // Check for collisions and generate collision data
             
-            // Reset contact list
-            physic::box_contacts.clear();
+            // Reset contact vector
+            physic::dim2::contacts.clear();
             
-            // Populate contact list
-            physic::generate_2dbox_contacts_data(game_data::box_rigidbodies);
-            
+            // Create the list on which to run the dispatcher
+            std::vector<std::pair<physic::dim2::rigidbody*, physic::dim2::collider*>> world_bodies;
+
+            for(int i = 0; i < game_data::ARRAY_SIZE; i ++){
+                game_data::rigidbody_2d_box& gdrb = game_data::world_rigidbodies_2d_box[i];
+                if(gdrb.free)
+                    continue;
+                world_bodies.push_back({ & (gdrb.rb), & (gdrb.coll) });
+            }
+
+            // Populate "phyisic::dim2::contacts" vector
+            physic::dim2::collision_dispatcher(world_bodies);  
 
             // ====================================================================================
             // Solve collisions by generating impulses
 
-            physic::solve_2dbox_contacts_interpenetration_linear_proj();
-            physic::solve_2dbox_contacts_velocities();
+            /* physic::solve_2dbox_contacts_interpenetration_linear_proj();
+            physic::solve_2dbox_contacts_velocities(); */   
             
         }        
 
         // ====================================================================================
-        // Overwrite transform positions with the updated rigidbody data
-        for( int i = 0; i < game_data::box_gameobjects.size(); i++ ) {
-            int rb_id = game_data::box_gameobjects[i].box_rigidbody_2d_id;
+        // Update each gameobject transform with the data inside their rigidbody
 
-            game_data::box_gameobjects[i].transform_2d.world_x_pos = game_data::box_rigidbodies[rb_id].x;
-            game_data::box_gameobjects[i].transform_2d.world_y_pos = game_data::box_rigidbodies[rb_id].y;
-            game_data::box_gameobjects[i].transform_2d.world_z_angle = game_data::box_rigidbodies[rb_id].an;
+        for( int i = 0; i < game_data::world_gameobjects_box.size(); i++ ) {
+            int rb_id = game_data::world_gameobjects_box[i].rigidbody_2d_box_id;
+            physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_box[rb_id].rb;
+
+            game_data::world_gameobjects_box[i].transform_2d.world_x_pos = rb.pos_x;
+            game_data::world_gameobjects_box[i].transform_2d.world_y_pos = rb.pos_y;
+            game_data::world_gameobjects_box[i].transform_2d.world_z_angle = rb.angle;
         }
 
-        
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                               POST LOGIC UPDATE
+        //                                         MANAGE DRAGGING EVENT
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // If the flag "event_is_dragging_active" is set, update the dragged gameobject's transform and rigidbody data 
+        // with the world mouse position.
 
-        // ====================================================================================
-        // Manage dragging event
         if(game_data::event_is_dragging_active){
 
             // On first dragging frame, setup the renderer to highlight 
             if (inputs::mouse_left_button == inputs::PRESS) {
-                game_data::box_gameobjects[game_data::dragged_game_object_id].render_outline = true;
+                game_data::world_gameobjects_box[game_data::dragged_game_object_id].render_outline = true;
             }
 
-            // If mouse is released, remove event dragging
+            // If mouse is released, remove event dragging and remove the highlight
             if (inputs::mouse_left_button == inputs::RELEASE) {
-                game_data::box_gameobjects[game_data::dragged_game_object_id].render_outline = false;
+                game_data::world_gameobjects_box[game_data::dragged_game_object_id].render_outline = false;
                 game_data::event_is_dragging_active = false;
             }
             
@@ -238,14 +263,14 @@ int main(void){
                 );
 
                 // Update the box gameobject positional data with the current cursor world position                
-                game_data::box_gameobject& game_object = game_data::box_gameobjects.at(game_data::dragged_game_object_id); 
+                game_data::box_gameobject& game_object = game_data::world_gameobjects_box.at(game_data::dragged_game_object_id); 
                 game_data::transform_2d t = game_object.transform_2d;
-                physic::box_rigidbody_2d& rb = game_data::box_rigidbodies.at(game_object.box_rigidbody_2d_id);
+                physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_box[game_object.rigidbody_2d_box_id].rb;
 
                 t.world_x_pos = curr_cursor_world_x;
                 t.world_y_pos = curr_cursor_world_y;
-                rb.x = curr_cursor_world_x;
-                rb.y = curr_cursor_world_y;                 
+                rb.pos_x = curr_cursor_world_x;
+                rb.pos_y = curr_cursor_world_y;                 
             }
 
         }
@@ -284,13 +309,14 @@ int main(void){
             rendering::game_scene_viewport.pixel_width, 
             rendering::game_scene_viewport.pixel_height);
 
-        // Remove the old image from the framebuffer:
+        // Remove the old image from tehe framebuffer:
         glClear(GL_COLOR_BUFFER_BIT);
 
         // ====================================================================================
         // Update the rendering Camera parameters
 
-        // Imposta la width della camera di gioco in modo che ciò che cattura nel game world rifletta il rapporto con cui viene mostrata sullo schermo
+        // Imposta la width della camera di gioco in modo che ciò che cattura nel game world rifletta 
+        // il rapporto con cui viene mostrata sullo schermo
         rendering::camera.world_width_fov = rendering::game_scene_viewport.ratio * rendering::camera.world_height_fov;
 
         // ====================================================================================
@@ -306,7 +332,7 @@ int main(void){
         // ====================================================================================
         // Iterate over all boxes and render them
 
-        for ( auto element : game_data::box_gameobjects ) {
+        for ( auto element : game_data::world_gameobjects_box ) {
 
             game_data::box_gameobject& box_go = element.second; 
             game_data::transform_2d t = box_go.transform_2d;
@@ -328,8 +354,14 @@ int main(void){
             // Render on the currently bounded framebuffer
             glDrawArrays(GL_TRIANGLES, 0, rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_number);
         }
-        
+
         // ====================================================================================
+        //                                  Render Contact data
+        // ====================================================================================
+
+
+        
+/*         // ====================================================================================
         //                                  Render Starting Impulses
         // ====================================================================================
         // Setup rendering to render starting impulses
@@ -416,7 +448,7 @@ int main(void){
             rad_angle = std::atan2(-contact.n_y, -contact.n_x);
 
             rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
-        }
+        } */
 
         // ====================================================================================
         //                                  Finish rendering

@@ -117,7 +117,7 @@ namespace physic{
         // Contact generation functions:
         // Queste funzioni popolano il vettore di contatti "std::vector<contact_data> contacts"
 
-        void collision_dispatcher(std::vector<std::pair<rigidbody, collider>> world_bodies);
+        void collision_dispatcher(std::vector<std::pair<rigidbody*, collider*>>& world_bodies);
 
         // Restituisce il contatto del vertice di A con profondità maggiore in B
         contact_data generate_boxbox_contactdata_naive_alg(rigidbody& A, rigidbody& B, collider_box& coll_A, collider_box& coll_B);        
