@@ -170,17 +170,21 @@ void rendering::quad_texture_shader::set_uniform_outline(bool outline){
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                          Quad Texture Shader
+//                                          Debug Shader
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-rendering::debug_line_shader::gpu_line_data_buffers rendering::debug_line_shader::gpu_line_data;
-GLuint rendering::debug_line_shader::program_id;
-GLint rendering::debug_line_shader::point_A_location;
-GLint rendering::debug_line_shader::point_B_location;
-GLint rendering::debug_line_shader::mvp_location;
+rendering::debug_shader::gpu_line_data_buffers rendering::debug_shader::gpu_line_data;
+GLuint rendering::debug_shader::program_id;
+GLint rendering::debug_shader::point_A_location;
+GLint rendering::debug_shader::point_B_location;
+GLint rendering::debug_shader::mvp_location;
 
-// Shapes
-std::vector<float> rendering::debug_line_shader::arrow_stripe =
+// Definisce una serie di linee che compongono la shape di una freccia
+// La shape può essere modificata attraverso le funzioni:
+//    void set_arrow_stripe_length( float length );
+//    void set_arrow_stripe_width( float width );
+//    void set_arrow_stripe_tip_size( float length, float width);
+std::vector<float> rendering::debug_shader::arrow_stripe =
 {   
     0.0,   0.5, 
     0.0,  -0.5,
@@ -196,12 +200,12 @@ std::vector<float> rendering::debug_line_shader::arrow_stripe =
 //                                init
 // =========================================================================|
 
-void rendering::debug_line_shader::init(){
+void rendering::debug_shader::init(){
     // ====================================================================================
     // Setup variable ids 
 
-    std::string vertex_shader_source = load_multiline_txt_to_string("resources/debug_line_vertex_shader_source.txt");
-    std::string fragment_shader_source = load_multiline_txt_to_string("resources/debug_line_fragment_shader_source.txt");
+    std::string vertex_shader_source = load_multiline_txt_to_string("resources/debug_vertex_shader_source.txt");
+    std::string fragment_shader_source = load_multiline_txt_to_string("resources/debug_fragment_shader_source.txt");
 
     // Compila e linka gli shader specificati nelle stringhe vertex_shader_source e fragment_shader_source creando il programma shader
     program_id = opengl_create_shader_program( vertex_shader_source.c_str(), fragment_shader_source.c_str() );
@@ -235,7 +239,7 @@ void rendering::debug_line_shader::init(){
 
     // -------------------------------------------------------------------------|
     // Configura il VAO ( lega i dati nel buffer vbo all'input dello shader )
-    // Bind the VAO to the debug_line_shader; specifica nel VAO come lo shader deve legarle i dati nel VBO ai suoi input.
+    // Bind the VAO to the debug_shader; specifica nel VAO come lo shader deve legarle i dati nel VBO ai suoi input.
     // Questo VAO è poi bindato quando lo shader viene eseguito sui dati della mesh
 
     glUseProgram(program_id);
@@ -266,31 +270,61 @@ void rendering::debug_line_shader::init(){
 //                          set_uniform_point_A
 // =========================================================================|
 
-void rendering::debug_line_shader::set_uniform_point_A(float x_pos, float y_pos){
-    glUniform2f(point_A_location, x_pos, y_pos);
+void rendering::debug_shader::set_uniform_point_A(float x_pos, float y_pos, float z_pos){
+    glUniform3f(point_A_location, x_pos, y_pos, z_pos);
 }
 
 // =========================================================================|
 //                          set_uniform_point_B
 // =========================================================================|
 
-void rendering::debug_line_shader::set_uniform_point_B(float x_pos, float y_pos){
-    glUniform2f(point_B_location, x_pos, y_pos);
+void rendering::debug_shader::set_uniform_point_B(float x_pos, float y_pos, float z_pos){
+    glUniform3f(point_B_location, x_pos, y_pos, z_pos);
 }
 
 // =========================================================================|
 //                          set_uniform_mvp
 // =========================================================================|
 
-void rendering::debug_line_shader::set_uniform_mvp(GLfloat mvp[16]){
+void rendering::debug_shader::set_uniform_mvp(GLfloat mvp[16]){
     glUniformMatrix4fv(mvp_location, 1, GL_FALSE, mvp);
 }
+
+// =========================================================================|
+//                              draw_2d_point
+// =========================================================================|
+void rendering::debug_shader::draw_2d_point( float world_x_pos, float world_y_pos ){
+
+    
+    glEnable(GL_PROGRAM_POINT_SIZE);
+
+    // Prepare the mvp
+    float mvp [16];
+    rendering::calculate_mvp(
+        mvp,
+        1,
+        1,
+        world_x_pos,
+        world_y_pos,
+        0
+    );
+
+    set_uniform_mvp(mvp);
+    set_uniform_point_A(0,0,0);
+    set_uniform_point_B(0,0,0);
+
+    glDrawArrays(GL_POINTS, 0, 1);
+
+    glDisable(GL_PROGRAM_POINT_SIZE);
+
+}
+
 
 // =========================================================================|
 //                          draw_2d_line_stripe
 // =========================================================================|
 
-void rendering::debug_line_shader::draw_2d_line_stripe( float stripe_pos_x, float stripe_pos_y, float stripe_rot, std::vector<float> stripe){
+void rendering::debug_shader::draw_2d_line_stripe( float stripe_pos_x, float stripe_pos_y, float stripe_rot, std::vector<float> stripe){
     
     // Prepare the mvp
     float mvp [16];
@@ -308,8 +342,8 @@ void rendering::debug_line_shader::draw_2d_line_stripe( float stripe_pos_x, floa
 
     // Draw the lines 
     for (int i=0; i < stripe.size()-2; i=i+2 ) {
-        set_uniform_point_A(stripe[i], stripe[i+1]);
-        set_uniform_point_B(stripe[i+2], stripe[i+3]);
+        set_uniform_point_A(stripe[i], stripe[i+1], 0);
+        set_uniform_point_B(stripe[i+2], stripe[i+3], 0);
         glDrawArrays(GL_LINES, 0, 2);
     }
 
@@ -319,7 +353,7 @@ void rendering::debug_line_shader::draw_2d_line_stripe( float stripe_pos_x, floa
 //                        set_arrow_stripe_length
 // =========================================================================|
 
-void rendering::debug_line_shader::set_arrow_stripe_length(float length){
+void rendering::debug_shader::set_arrow_stripe_length(float length){
     arrow_stripe[4]=length;
     arrow_stripe[6]=length;
     arrow_stripe[10]=length;
@@ -330,7 +364,7 @@ void rendering::debug_line_shader::set_arrow_stripe_length(float length){
 //                        set_arrow_stripe_width
 // =========================================================================|
 
-void rendering::debug_line_shader::set_arrow_stripe_width(float width){
+void rendering::debug_shader::set_arrow_stripe_width(float width){
     arrow_stripe[1]=width;
     arrow_stripe[3]=-width;
     arrow_stripe[5]=-width;
@@ -338,7 +372,7 @@ void rendering::debug_line_shader::set_arrow_stripe_width(float width){
     arrow_stripe[15]=width;
 }
 
-void rendering::debug_line_shader::set_arrow_stripe_tip_size(float length, float width){
+void rendering::debug_shader::set_arrow_stripe_tip_size(float length, float width){
     arrow_stripe[7]=-width;
     arrow_stripe[11]=width;
 

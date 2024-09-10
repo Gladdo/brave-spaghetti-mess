@@ -197,6 +197,9 @@ std::vector<physic::dim2::contact_data> physic::dim2::contacts;
 // This function deals with both the broad phase and the narrow phase.
 //
 void physic::dim2::collision_dispatcher(std::vector<std::pair<rigidbody*, collider*>>& world_bodies){
+
+    if(world_bodies.size()<= 1)
+        return;
     
     // ------------------------------------------------------------------------------------
     // Define how to loop the world_bodies vector
@@ -257,7 +260,12 @@ void physic::dim2::collision_dispatcher(std::vector<std::pair<rigidbody*, collid
 //
 // The generation is done with a naive (potentially inefficent) algorithm;
 // for better performance use Extended-GJK or other optimized algorithm for 
-// contact generation.  
+// contact generation.
+//
+// Questo algoritmo funziona con l'ipotesi che le due shape siano in
+// contatto sui rispettivi bordi; se si intersecano eccessivamente (come
+// può accadere se ad ogni frame le shapes si spostano velocemente), allora
+// i punti di contatto possono non essere coerenti.  
 //
 // Algorithm overview:
 // Given the two boxes A and B:
@@ -368,10 +376,6 @@ physic::dim2::contact_data physic::dim2::generate_boxboxvertices_max_contactdata
         // Create the variable that hold the contact data of the current vertex
         contact_data vertex_contact;
         vertex_contact.pen = 0;
-        vertex_contact.qa_x = A_collider_vertices[i][0];
-        vertex_contact.qa_y = A_collider_vertices[i][1];
-        vertex_contact.rb_a = &A;
-        vertex_contact.rb_b = &B;
 
         // Calculate if the current vertex is in contact and how.
         // If it isn't in contact the penetration depth is set to a value <= 0
@@ -381,6 +385,10 @@ physic::dim2::contact_data physic::dim2::generate_boxboxvertices_max_contactdata
         // keep track of the current vertex.
         if ( vertex_contact.pen > 0 && res_contact.pen < vertex_contact.pen ) {
             res_contact = vertex_contact;
+            res_contact.qa_x = A_collider_vertices[i][0];
+            res_contact.qa_y = A_collider_vertices[i][1];
+            res_contact.rb_a = &A;
+            res_contact.rb_b = &B;
         }
 
     }

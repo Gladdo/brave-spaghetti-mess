@@ -13,7 +13,19 @@
 #include <chrono>
 #include <math.h>
 
+// ====================================================================================
+// Global main data
+
 GLFWwindow* window;
+
+auto previousTime = std::chrono::high_resolution_clock::now();
+std::chrono::duration<float> delta_time;
+
+// ====================================================================================
+// Functions prototypes
+
+void DEBUG_naive_collisions_alg_physic();
+void DEBUG_naive_collisions_alg_rendering();
 
 int main(void){
 
@@ -31,7 +43,7 @@ int main(void){
 
     rendering::quad_texture_shader::init();
     rendering::scene_image_framebuffer::init();
-    rendering::debug_line_shader::init();
+    rendering::debug_shader::init();
 
     // ====================================================================================
     // Initialize GUI
@@ -81,22 +93,12 @@ int main(void){
     rendering::camera.world_near_clip = 0;
     rendering::camera.world_far_clip = 20;
 
-    // ====================================================================================
-    // Initialize Delta time
-
-    auto previousTime = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<float> delta_time;
-
-    // ====================================================================================
-    // Step forward control variable
-    bool step;
-
     while (!glfwWindowShouldClose(window))
     { 
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                               EDITOR LOOP
+        //                                              MAIN LOOP START
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -104,13 +106,7 @@ int main(void){
         //                                               MANAGE INPUTS
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        step = false;
-
         inputs::update();
-
-        if(inputs::simulation_step_forward_button==inputs::PRESS){
-            step = true;
-        }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                           MANAGE MOUSE USER CLICK
@@ -120,9 +116,11 @@ int main(void){
         // all box_gameobjects to check if the mouse hits a rigidbody.
         // If it does set the flag "event_is_dragging_active" and store in "dragged_game_object_id" the id of the game 
         // object hit by the mouse click
-        
+
+        // Se è stato premuto il tasto sinistro del mouse e il click è sul tab della scena        
         if (inputs::mouse_left_button == inputs::PRESS && inputs::check_if_click_is_on_scene()){
 
+            // Itera su tutti i game objects
             for( auto& game_object : game_data::world_gameobjects_box) {
                 
                 int go_id = game_object.first;
@@ -130,6 +128,8 @@ int main(void){
                 physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_box[bgo.rigidbody_2d_box_id].rb;
                 physic::dim2::collider_box& coll = game_data::world_rigidbodies_2d_box[bgo.rigidbody_2d_box_id].coll;
 
+                // Controlla se le coordinate del mouse in world space sono dentro al box corrente
+                // NB: world_x_pos e world_y_pos del mouse click sono calcolate nello step di update degli inputs
                 if ( 
                     physic::dim2::check_pointbox_collision(
                         inputs::mouse_last_click.world_x_pos,
@@ -148,74 +148,32 @@ int main(void){
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                                UPDATE DELTA TIME
+        //                                             UPDATE DELTA TIME
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         delta_time = std::chrono::high_resolution_clock::now() - previousTime;
         previousTime = std::chrono::high_resolution_clock::now(); 
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                               PHYSIC UPDATE
+        //                                      WORLD RIGIDBODIES NUMERIC INTEGRATION
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Steps:
-        //  - Update all rigidbodies data with numeric integration
-        //  - Generate contacts with collision detection between all rigidbody colliders
-        //  - Update all gameobject's transforms with the updated rigidbody data
+        // Update all rigidbodies data inside "world_rigidbodies_2d_box"
 
-        if(game_data::is_simulation_running && step){
-            // ====================================================================================
-            // Manage starting impulses
+        for( int i = 0; i < game_data::ARRAY_SIZE; i++ ) {
+            if ( !game_data::world_rigidbodies_2d_box[i].free )
+                physic::dim2::numeric_integration(game_data::world_rigidbodies_2d_box[i].rb, delta_time.count(), 0, 0, 0);
+        }
 
-            /* if(game_data::starting_impulses.size() != 0){
-                
-                // Apply starting impulses
-                for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                         COLLISION DEBUG: PHYSIC
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-                    // If impulses exist for the i-esimo rigid body, then apply impulse
-                    if(game_data::starting_impulses.find(i)!= game_data::starting_impulses.end()){
-                        physic::apply_impulse( game_data::box_rigidbodies[i], game_data::starting_impulses.at(i));
-                        game_data::starting_impulses.erase(i);
-                    }
+        // Populate physic::dim2::contacts vector with collision between game world colliders
+        DEBUG_naive_collisions_alg_physic();
 
-                }
-            } */
-
-            // ====================================================================================
-            // Update all rigidbodies inside "world_rigidbodies_2d_box"
-
-            for( int i = 0; i < game_data::ARRAY_SIZE; i++ ) {
-                if ( !game_data::world_rigidbodies_2d_box[i].free )
-                    physic::dim2::numeric_integration(game_data::world_rigidbodies_2d_box[i].rb, delta_time.count(), 0, 0, 0);
-            }
-
-            // ====================================================================================
-            // Check for collisions and generate collision data
-            
-            // Reset contact vector
-            physic::dim2::contacts.clear();
-            
-            // Create the list on which to run the dispatcher
-            std::vector<std::pair<physic::dim2::rigidbody*, physic::dim2::collider*>> world_bodies;
-
-            for(int i = 0; i < game_data::ARRAY_SIZE; i ++){
-                game_data::rigidbody_2d_box& gdrb = game_data::world_rigidbodies_2d_box[i];
-                if(gdrb.free)
-                    continue;
-                world_bodies.push_back({ & (gdrb.rb), & (gdrb.coll) });
-            }
-
-            // Populate "phyisic::dim2::contacts" vector
-            physic::dim2::collision_dispatcher(world_bodies);  
-
-            // ====================================================================================
-            // Solve collisions by generating impulses
-
-            /* physic::solve_2dbox_contacts_interpenetration_linear_proj();
-            physic::solve_2dbox_contacts_velocities(); */   
-            
-        }        
-
-        // ====================================================================================
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                      UPDATE GAME OBJECTS TRANSFORMS
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Update each gameobject transform with the data inside their rigidbody
 
         for( int i = 0; i < game_data::world_gameobjects_box.size(); i++ ) {
@@ -276,7 +234,7 @@ int main(void){
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                      RENDER ON THE GAME SCENE FRAMEBUFFER
+        //                                       SETUP GAME SCENE FRAMEBUFFER 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
         // ====================================================================================
@@ -319,9 +277,13 @@ int main(void){
         // il rapporto con cui viene mostrata sullo schermo
         rendering::camera.world_width_fov = rendering::game_scene_viewport.ratio * rendering::camera.world_height_fov;
 
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                              RENDER GAME OBJECTS
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Renders data inside game_data::world_gameobjects_box
+
         // ====================================================================================
-        //                                  Render Boxes
-        // ====================================================================================
+        // Setup the shader
 
         glUseProgram(rendering::quad_texture_shader::program_id);
         glBindVertexArray(rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
@@ -330,7 +292,7 @@ int main(void){
         rendering::quad_texture_shader::set_uniform_texture_id(wall_texture_id);
 
         // ====================================================================================
-        // Iterate over all boxes and render them
+        // Iterate over all boxes data and render them
 
         for ( auto element : game_data::world_gameobjects_box ) {
 
@@ -355,23 +317,27 @@ int main(void){
             glDrawArrays(GL_TRIANGLES, 0, rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_number);
         }
 
-        // ====================================================================================
-        //                                  Render Contact data
-        // ====================================================================================
-
-
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                         COLLISION DEBUG: RENDERING
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Renders data inside physic::dim2::contacts vector
         
-/*         // ====================================================================================
+        DEBUG_naive_collisions_alg_rendering();        
+        
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                                  RENDERING
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*      // ====================================================================================
         //                                  Render Starting Impulses
         // ====================================================================================
         // Setup rendering to render starting impulses
 
         if(!game_data::is_simulation_running){
-            glUseProgram(rendering::debug_line_shader::program_id);
-            glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+            glUseProgram(rendering::debug_shader::program_id);
+            glBindVertexArray(rendering::debug_shader::gpu_line_data.line_data_pointers_buffer_id);
 
-            rendering::debug_line_shader::set_arrow_stripe_width(0.1);
-            rendering::debug_line_shader::set_arrow_stripe_tip_size(0.2, 0.2);
+            rendering::debug_shader::set_arrow_stripe_width(0.1);
+            rendering::debug_shader::set_arrow_stripe_tip_size(0.2, 0.2);
 
             if(game_data::starting_impulses.size() != 0){
                 
@@ -386,13 +352,13 @@ int main(void){
                         // Get the impulse
                         physic::impulse imp = game_data::starting_impulses.at(i);
 
-                        rendering::debug_line_shader::set_arrow_stripe_length(imp.mag);
+                        rendering::debug_shader::set_arrow_stripe_length(imp.mag);
                         
                         float x = imp.q_x + rb.x;
                         float y = imp.q_y + rb.y;
                         float rad_angle = std::atan2(imp.d_y, imp.d_x);
 
-                        rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
+                        rendering::debug_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_shader::arrow_stripe );
 
                     }
 
@@ -406,16 +372,16 @@ int main(void){
         // ====================================================================================
         // Setup rendering to render starting impulses
 
-        glUseProgram(rendering::debug_line_shader::program_id);
-        glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+        glUseProgram(rendering::debug_shader::program_id);
+        glBindVertexArray(rendering::debug_shader::gpu_line_data.line_data_pointers_buffer_id);
 
-        rendering::debug_line_shader::set_arrow_stripe_width(0.1);
-        rendering::debug_line_shader::set_arrow_stripe_tip_size(0.2, 0.2);
+        rendering::debug_shader::set_arrow_stripe_width(0.1);
+        rendering::debug_shader::set_arrow_stripe_tip_size(0.2, 0.2);
 
         for(int i = 0; i < physic::box_contacts.size(); i ++){
             physic::contact_data& contact = physic::box_contacts[i];
 
-            rendering::debug_line_shader::set_arrow_stripe_length(contact.resolved_impulse_mag);
+            rendering::debug_shader::set_arrow_stripe_length(contact.resolved_impulse_mag);
 
             mat4x4 mm;
             vec4 local_q;
@@ -433,7 +399,7 @@ int main(void){
             float y = world_q[1];
             float rad_angle = std::atan2(contact.n_y, contact.n_x);
 
-            rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
+            rendering::debug_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_shader::arrow_stripe );
             
             local_q[0] = contact.qb_x;
             local_q[1] = contact.qb_y;
@@ -447,12 +413,12 @@ int main(void){
             y = world_q[1];
             rad_angle = std::atan2(-contact.n_y, -contact.n_x);
 
-            rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
+            rendering::debug_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_shader::arrow_stripe );
         } */
 
-        // ====================================================================================
-        //                                  Finish rendering
-        // ====================================================================================
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                       RELEASE GAME SCENE FRAMEBUFFER
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         glUseProgram(0);
         rendering::scene_image_framebuffer::deactivate();
@@ -506,8 +472,17 @@ int main(void){
             std::cout << "Click world position: " << inputs::mouse_last_click.world_x_pos << " " << inputs::mouse_last_click.world_y_pos << std::endl << std::flush; 
         } */
         
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                              MAIN LOOP END
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                              RELEASE RESOURCES
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     gui::destroy();
 
@@ -518,4 +493,144 @@ int main(void){
 
     return 0;
 
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                               NAIVE COLLISIONS ALG DEBUG
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// =========================================================================|
+//                                Physic update
+// =========================================================================|
+// Checks for collision between the shapes inside the "world_bodies" vector.
+// Populate physic::dim2::contacts vector with those collision.
+//
+void DEBUG_naive_collisions_alg_physic(){
+
+    // ====================================================================================
+    // Reset contact vector from eventual unresolved contacts from previous frame
+    
+    physic::dim2::contacts.clear();
+    
+    // ====================================================================================
+    // Create the list of rigidbodies on which to run the collision test
+
+    std::vector<std::pair<physic::dim2::rigidbody*, physic::dim2::collider*>> world_bodies;
+
+    for(int i = 0; i < game_data::ARRAY_SIZE; i ++){
+        game_data::rigidbody_2d_box& gdrb = game_data::world_rigidbodies_2d_box[i];
+        if(gdrb.free)
+            continue;
+        world_bodies.push_back({ & (gdrb.rb), & (gdrb.coll) });
+    }
+
+    // ====================================================================================
+    // Launch the dispatcher
+
+    // Populates "phyisic::dim2::contacts" vector
+    physic::dim2::collision_dispatcher(world_bodies);    
+
+}
+
+// =========================================================================|
+//                               Rendering update
+// =========================================================================|
+// Renders visually the data inside the physic::dim2::contacts vector 
+//
+void DEBUG_naive_collisions_alg_rendering(){
+    
+    glUseProgram(rendering::debug_shader::program_id);
+    glBindVertexArray(rendering::debug_shader::gpu_line_data.line_data_pointers_buffer_id);
+
+    for (auto contact : physic::dim2::contacts){
+
+        // Find QA world contact coordinates
+        mat4x4 model_matrix;
+        physic::dim2::build_model_matrix(model_matrix, contact.rb_a->pos_x, contact.rb_a->pos_y, contact.rb_a->angle );
+        vec4 world_qa;
+        vec4 local_qa = {contact.qa_x, contact.qa_y, 0, 1};
+        mat4x4_mul_vec4(world_qa, model_matrix, local_qa);
+
+        // Find QB world contact coordinates
+        physic::dim2::build_model_matrix(model_matrix, contact.rb_b->pos_x, contact.rb_b->pos_y, contact.rb_b->angle );
+        vec4 world_qb;
+        vec4 local_qb= {contact.qb_x, contact.qb_y, 0, 1};
+        mat4x4_mul_vec4(world_qb, model_matrix, local_qb);
+
+        // Render QA
+        rendering::debug_shader::draw_2d_point(world_qa[0],world_qa[1]);
+
+        // Render QB
+        rendering::debug_shader::draw_2d_point(world_qb[0],world_qb[1]);
+
+        // Render the normal (applied on QB)
+        rendering::debug_shader::draw_2d_line_stripe( 
+            world_qb[0],
+            world_qb[1],
+            0,
+            {0, 0, contact.n_x, contact.n_y}
+        );
+    
+    }
+
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                            CONTACT RESPONSE DEBUG
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void DEBUG_contact_response_physic_step(){
+    
+    // Steps:
+    //  - Update all rigidbodies data with numeric integration
+    //  - Generate contacts with collision detection between all rigidbody colliders
+    //  - Update all gameobject's transforms with the updated rigidbody data
+
+    // Se il frag "is_simlation_running" è true, allora esegui lo step fisico, altrimenti skippalo
+    if(game_data::is_simulation_running && inputs::simulation_step_forward_button==inputs::PRESS){
+
+        // ====================================================================================
+        // Manage starting impulses
+
+        /* if(game_data::starting_impulses.size() != 0){
+            
+            // Apply starting impulses
+            for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
+
+                // If impulses exist for the i-esimo rigid body, then apply impulse
+                if(game_data::starting_impulses.find(i)!= game_data::starting_impulses.end()){
+                    physic::apply_impulse( game_data::box_rigidbodies[i], game_data::starting_impulses.at(i));
+                    game_data::starting_impulses.erase(i);
+                }
+
+            }
+        } */
+
+        // ====================================================================================
+        // Check for collisions and generate collision data
+        
+        // Reset contact vector
+        physic::dim2::contacts.clear();
+        
+        // Create the list on which to run the dispatcher
+        std::vector<std::pair<physic::dim2::rigidbody*, physic::dim2::collider*>> world_bodies;
+
+        for(int i = 0; i < game_data::ARRAY_SIZE; i ++){
+            game_data::rigidbody_2d_box& gdrb = game_data::world_rigidbodies_2d_box[i];
+            if(gdrb.free)
+                continue;
+            world_bodies.push_back({ & (gdrb.rb), & (gdrb.coll) });
+        }
+
+        // Populate "phyisic::dim2::contacts" vector
+        physic::dim2::collision_dispatcher(world_bodies);  
+
+        // ====================================================================================
+        // Solve collisions by generating impulses
+
+        /* physic::solve_2dbox_contacts_interpenetration_linear_proj();
+        physic::solve_2dbox_contacts_velocities(); */   
+        
+    }
 }
