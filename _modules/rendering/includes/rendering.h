@@ -200,6 +200,7 @@ namespace rendering{
         extern GLint mvp_location;                         // Id della variabile uniform MVP nel vertexshader
         extern GLint outline_location;                     // Id della variabile uniform outline nel vertexshader
         extern GLint tex_unit_location;                    // Id della variabile uniform texUnit nel fragmentshader
+        extern GLint screen_width_ratio_location;
 
         // -------------------------------------------------------------------------|
         // Funzioni di inizializzazione dello shader
@@ -213,6 +214,7 @@ namespace rendering{
         void set_uniform_texture_id(GLuint texture_object_id);
         void set_uniform_mvp(GLfloat mvp[16]);
         void set_uniform_outline(bool outline);
+        void set_uniform_screen_width_ratio(float);
 
     }
 
@@ -325,6 +327,7 @@ namespace rendering{
 
         extern GLuint framebuffer_obj_id;      // Id del framebuffer contenente gli attachment
         extern GLuint texture_obj_id;          // Id della texture su cui viene salvato il colore dei pixel
+        extern GLuint renderbuffer_obj_id;
         extern int texture_pixel_width;      // width della texture su cui viene salvato il colore dei pixel
         extern int texture_pixel_height;     // height della texture su cui viene salvato il colore dei pixel
 

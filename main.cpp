@@ -267,8 +267,10 @@ int main(void){
             rendering::game_scene_viewport.pixel_width, 
             rendering::game_scene_viewport.pixel_height);
 
+        glEnable(GL_DEPTH_TEST); 
+
         // Remove the old image from tehe framebuffer:
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // ====================================================================================
         // Update the rendering Camera parameters
@@ -287,9 +289,11 @@ int main(void){
 
         glUseProgram(rendering::quad_texture_shader::program_id);
         glBindVertexArray(rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
+         
 
         // Setup the shader to render using the wall texture
         rendering::quad_texture_shader::set_uniform_texture_id(wall_texture_id);
+        rendering::quad_texture_shader::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
 
         // ====================================================================================
         // Iterate over all boxes data and render them
@@ -316,6 +320,8 @@ int main(void){
             // Render on the currently bounded framebuffer
             glDrawArrays(GL_TRIANGLES, 0, rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_number);
         }
+
+        glDisable(GL_DEPTH_TEST);  
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                         COLLISION DEBUG: RENDERING

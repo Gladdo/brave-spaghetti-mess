@@ -1,20 +1,77 @@
 #version 330
 uniform mat4 MVP;
 uniform int outline;
+uniform float screen_width_ratio;
 
 in vec2 vTexCoord;
 in vec2 vPos;
 
 out vec2 texCoord;
 out vec2 fragPos;
+out vec2 borderCoord;
 
 void main()
 {
 
-    float border_width = 0.1f;
-    float outline_scale = 1 + border_width * outline; 
+    	float border_width = 0.01f * outline;
 
-    gl_Position = MVP * vec4(vPos * outline_scale, 0.0, 1.0);
-    texCoord = vTexCoord;
-    fragPos = vPos * outline_scale;
+	mat4 ExplodedMVP = MVP;
+	ExplodedMVP[3][0] = ExplodedMVP[3][0] + sign(vPos.x) * border_width / screen_width_ratio;
+	ExplodedMVP[3][1] = ExplodedMVP[3][1] + sign(vPos.y) * border_width;
+
+    	gl_Position = ExplodedMVP * vec4( vPos , 0.0, 1.0 );
+	gl_Position.z = - outline * 0.5;
+	vec4 normalPos = MVP * vec4( vPos, 0.0, 1.0);
+	vec4 centerPos = MVP * vec4( 0.0, 0.0, 0.0, 1.0);
+
+	borderCoord = vec2( (gl_Position.x - centerPos.x) / abs(normalPos.x - centerPos.x) ,
+ 			    (gl_Position.y - centerPos.y) / abs(normalPos.y - centerPos.y) );
+
+    	texCoord = vTexCoord;
+
 }
+
+void oldmain()
+{
+
+    	float border_width = 0.1f * outline;
+
+    	gl_Position = MVP * vec4( vPos , 0.0, 1.0);
+	vec4 explodedXPos = MVP * vec4(vPos.x +  sign(vPos.x) * 2.0, vPos.y, 0.0, 1.0 );
+	vec4 explodedYPos = MVP * vec4(vPos.x, vPos.y +  sign(vPos.y) * 2.0, 0.0, 1.0 );	
+
+    	vec2 normal_y = normalize( vec2( explodedYPos.x - gl_Position.x, explodedYPos.y - gl_Position.y) ) * border_width ;
+	vec2 normal_x = normalize( vec2( explodedXPos.x - gl_Position.x, explodedXPos.y - gl_Position.y) ) * border_width ;
+	gl_Position = vec4( gl_Position.x + normal_x.x, gl_Position.y, gl_Position.z, 1.0 );
+
+	//vec2 normal_y = normalize( vec2( explodedYPos.x - gl_Position.x, explodedYPos.y - gl_Position.y) );
+	//vec2 explodedNormal = normalize( normal_x + normal_y ) * 0.4f * outline;
+	
+    	//gl_Position = vec4( gl_Position.x + explodedNormal.x, gl_Position.y + explodedNormal.y , gl_Position.z, 1.0 );
+    
+    	texCoord = vTexCoord;
+
+}
+
+
+void oldoldmain(){
+	
+
+    float border_width = 0.4f * outline;
+
+    vec2 exploded_pos = vec2(vPos.x +  sign(vPos.x) * border_width, vPos.y +  sign(vPos.y) * border_width );
+
+    gl_Position = MVP * vec4( exploded_pos , 0.0, 1.0);
+
+    borderCoord = vec2(exploded_pos.x / abs(vPos.x), exploded_pos.y / abs(vPos.y));
+    
+    texCoord = vTexCoord;
+
+}
+
+void oldoldoldmain(){
+	float border_width = 0.1f * outline;
+	borderCoord = vec2((vPos.x +  vPos.x / abs(vPos.x) * border_width) / vPos.x, (vPos.y / abs(vPos.y) * border_width) / vPos.y );
+	fragPos = vPos +  normalize(vPos);
+}
+

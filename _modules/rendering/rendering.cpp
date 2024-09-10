@@ -28,6 +28,7 @@ GLuint rendering::quad_texture_shader::program_id;                          // I
 GLint rendering::quad_texture_shader::tex_unit_location;                    // Id della variabile uniform texUnit nel fragmentshader
 GLint rendering::quad_texture_shader::mvp_location;                         // Id della variabile uniform MVP nel vertexshader
 GLint rendering::quad_texture_shader::outline_location;                     // Id della variabile uniform outline nel vertexshader
+GLint rendering::quad_texture_shader::screen_width_ratio_location;                     // Id della variabile uniform outline nel vertexshader
 
 // =========================================================================|
 //                                  init
@@ -55,6 +56,7 @@ void rendering::quad_texture_shader::init(){
     tex_unit_location = glGetUniformLocation(program_id, "texUnit");
     mvp_location = glGetUniformLocation(program_id, "MVP");
     outline_location = glGetUniformLocation(program_id, "outline");
+    screen_width_ratio_location = glGetUniformLocation(program_id, "screen_width_ratio");
 
     // -------------------------------------------------------------------------|
     // Setup vertex data
@@ -167,6 +169,14 @@ void rendering::quad_texture_shader::set_uniform_mvp(GLfloat mvp[16]){
 
 void rendering::quad_texture_shader::set_uniform_outline(bool outline){
     glUniform1i(outline_location, outline);
+}
+
+// =========================================================================|
+//                          set_Uniform_outline
+// =========================================================================|
+
+void rendering::quad_texture_shader::set_uniform_screen_width_ratio(float ratio){
+    glUniform1f(screen_width_ratio_location, ratio);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -389,6 +399,7 @@ void rendering::debug_shader::set_arrow_stripe_tip_size(float length, float widt
 
 GLuint rendering::scene_image_framebuffer::framebuffer_obj_id;          // Id del framebuffer contenente gli attachment
 GLuint rendering::scene_image_framebuffer::texture_obj_id;              // Id della texture su cui viene salvato il colore dei pixel
+GLuint rendering::scene_image_framebuffer::renderbuffer_obj_id;
 int rendering::scene_image_framebuffer::texture_pixel_width = 800;      // width della texture su cui viene salvato il colore dei pixel
 int rendering::scene_image_framebuffer::texture_pixel_height = 600;     // height della texture su cui viene salvato il colore dei pixel
 
@@ -401,22 +412,51 @@ int rendering::scene_image_framebuffer::texture_pixel_height = 600;     // heigh
 // che poi configura come color attachment per il framebuffer. 
 void rendering::scene_image_framebuffer::init(){
 
+    // -------------------------------------------------------------------------|
     // Create the framebuffer object
     glGenFramebuffers(1, &framebuffer_obj_id);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_obj_id); 
 
+    // =========================================================================|
+    // SETUP THE TEXTURE BUFFER OBJECT
+
+    // -------------------------------------------------------------------------|
     // Create the texture buffer object
     glGenTextures(1, &texture_obj_id);
 
+    // -------------------------------------------------------------------------|
     // Bind the texture buffer object and configure its parameters    
     glBindTexture(GL_TEXTURE_2D, texture_obj_id);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texture_pixel_width, texture_pixel_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
 
+    // -------------------------------------------------------------------------|
+    // Attach the texture buffer to the framebuffer
+
     // Attach the texture to the framebuffer (tells opengl that the texture is the canvas on which the 
     // frame buffer will store pixel color data ).
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_obj_id, 0);
+
+    // =========================================================================|
+    // SETUP THE RENDER BUFFER OBJECT
+
+    // -------------------------------------------------------------------------|
+    // Create the renderbuffer object
+    glGenRenderbuffers(1, &renderbuffer_obj_id);
+
+    // -------------------------------------------------------------------------|
+    // Bind the render buffer object and configure its parameters    
+    glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_obj_id);
+    // Stores the effective memory for the buffer
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, texture_pixel_width, texture_pixel_height);
+
+    // -------------------------------------------------------------------------|
+    // Attach the render buffer to the framebuffer
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer_obj_id);
+
+    // =========================================================================|
+    // FINISH THE FRAMEBUFFER SETUP
 
     // Check if framebuffer is successfully created, otherwise assert
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
@@ -455,8 +495,17 @@ void rendering::scene_image_framebuffer::set_texture_size(float width, float hei
     // Aggiorna le informazioni sull'attachment del frame buffer
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_obj_id, 0);
 
-    // Disattiva il framebuffer e l'oggetto texture utilizzati dalla classe
+    // Modifica i parametri del renderbuffer
+    glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_obj_id);
+    // Stores the effective memory for the buffer
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, texture_pixel_width, texture_pixel_height);
+
+    // Aggiorna le informazioni sull'attachment del framebuffer 
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer_obj_id);
+
+    // Disattiva il framebuffer e i buffer che utilizza
     glBindTexture(GL_TEXTURE_2D, 0);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 }
