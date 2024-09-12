@@ -61,6 +61,19 @@ namespace game_data{
     void AddBoxGameObject();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                       UTILITY GAME DATA DECLARATIONS
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    struct contact_circle_animation{
+        float world_x, world_y;
+        float size = 0;
+        float size_setp = 1;
+        float max_size = 8;
+        float impulse_axis_x = 0;
+        float impulse_axis_y = 0;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                           GAME DATA DEFINITION
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -96,6 +109,11 @@ namespace game_data{
     extern GLuint sim_play_button_texture_id;
     extern GLuint sim_pause_button_texture_id;
     extern bool is_simulation_running;
+
+    // ====================================================================================
+    // Contact circle animation
+
+    extern std::vector<contact_circle_animation> contact_circle_animations;
 
 
 }

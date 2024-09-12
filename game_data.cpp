@@ -15,6 +15,8 @@ GLuint game_data::sim_play_button_texture_id;
 GLuint game_data::sim_pause_button_texture_id;
 bool game_data::is_simulation_running = false;
 
+std::vector<game_data::contact_circle_animation> game_data::contact_circle_animations;
+
 void game_data::AddBoxGameObject(){
 
     // ------------------------------------------------------------------------------------

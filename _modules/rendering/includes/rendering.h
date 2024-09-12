@@ -219,7 +219,7 @@ namespace rendering{
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                          Debug Line Shader
+    //                                              Debug Shader
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // The shader draw call should work with stripes: we build shapes with lines (even 3d debug objects are drawn with 
     // lines and not triangles.).
@@ -260,7 +260,7 @@ namespace rendering{
     //  }
     //
 
-    namespace debug_shader{
+    namespace debug_line_shader{
 
         // -------------------------------------------------------------------------|
         // Dati/Buffer su cui esegue lo shader
@@ -309,6 +309,46 @@ namespace rendering{
         void set_arrow_stripe_length( float length );
         void set_arrow_stripe_width( float width );
         void set_arrow_stripe_tip_size( float length, float width);
+
+    };
+
+    namespace debug_circle_shader{
+
+        // -------------------------------------------------------------------------|
+        // Dati per gestire la mesh quadrata con cui lo shader renderizza
+
+        struct gpu_mesh_data_buffers{
+            GLuint mesh_vertexes_data_buffer_id;                    // Id del buffer sulla GPU contenente i vertici della mesh su cui viene poi renderizzata la texture
+            GLuint mesh_vertex_attribute_pointers_buffer_id;        // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
+            int mesh_vertex_number;                                 // Numero di vertici nella mesh
+        };
+
+        extern gpu_mesh_data_buffers quad_mesh_data_buffers;
+
+        // -------------------------------------------------------------------------|
+        // Shader Elements Ids 
+
+        extern GLuint program_id;                          // Id dello shader program presente sulla GPU
+        extern GLint mvp_location;                         // Id della variabile uniform MVP nel vertexshader
+        extern GLint radius_location; 
+        extern GLint circle_width_location;
+        extern GLint impulse_axis_location;
+        extern GLint time_location; 
+
+        // -------------------------------------------------------------------------|
+        // Funzioni di inizializzazione dello shader
+
+        void init();
+        void init_quad_mesh_buffers(int vertex_array_length, const float* vertex_array_data);
+
+        // -------------------------------------------------------------------------|
+        // Funzioni per impostare i valori degli uniform dello shader
+
+        void set_uniform_mvp(GLfloat mvp[16]);
+        void set_uniform_radius(GLfloat radius);
+        void set_uniform_circle_width(GLfloat circle_width);
+        void set_uniform_impulse_axis(float x, float y);
+        void set_uniform_time(GLfloat time);
 
     };
 

@@ -570,6 +570,182 @@ physic::dim2::contact_data physic::dim2::generate_pointbox_contactdata_naive_alg
     return res_contact;
 }
 
+/*
+void physic::solve_2dbox_contacts_velocities(){
+
+    if(box_contacts.size() != 0){
+        std::cout << "===========================================" << std::endl << std::flush;
+        std::cout << "Contact Resolution Starting" << std::endl << std::flush;
+    }
+
+
+    for(int i = 0; i < box_contacts.size(); i++){
+
+        std::cout << "Solving contact: " << i << std::endl << std::flush;
+        
+
+        contact_data contact = box_contacts[i];
+
+        // With this configuration, rbA contact happen on a vertex while rbB contact
+        // happen on a surface. Hence the normal of contact specify the normal surface of B
+        rigidbody_2d& rbA = *(contact.rb_a);
+        rigidbody_2d& rbB = *(contact.rb_b);
+
+        mat4x4 model_matrix_A;
+        mat4x4 model_matrix_B;
+
+        build_2d_model_matrix(model_matrix_A, rbA.x, rbA.y, rbA.an);
+        build_2d_model_matrix(model_matrix_B, rbB.x, rbB.y, rbB.an);
+
+        // ====================================================================================
+        // Find the impulse magnitude
+
+        std::cout << "Contact normal: " << contact.n_x  << ", " << contact.n_y  << std::endl << std::flush;
+
+        // Find the world velocity of q_b
+        // Find the world velocity of the angular component:
+        float local_rotation_va_x = - rbB.w * contact.qa_y;
+        float local_rotation_va_y = - rbB.w * contact.qa_x;
+        vec4 local_rotation_va = { local_rotation_va_x, local_rotation_va_y, 0, 0};
+        vec4 world_rotation_va;
+        mat4x4_mul_vec4(world_rotation_va, model_matrix_B, local_rotation_va);
+
+        // Find the total world velocity of q_b:
+        float va_x = rbA.vx + world_rotation_va[0];
+        float va_y = rbA.vy + world_rotation_va[1];
+
+        std::cout << "va: " << va_x  << ", " << va_y  << std::endl << std::flush;
+
+        // Find the world velocity of q_b
+        // Find the world velocity of the angular component:
+        float local_rotation_vb_x = - rbB.w * contact.qb_y;
+        float local_rotation_vb_y = - rbB.w * contact.qb_x;
+        vec4 local_rotation_vb = { local_rotation_vb_x, local_rotation_vb_y, 0, 0};
+        vec4 world_rotation_vb;
+        mat4x4_mul_vec4(world_rotation_vb, model_matrix_B, local_rotation_vb);
+
+        // Find the total world velocity of q_b:
+        float vb_x = rbB.vx + world_rotation_vb[0];
+        float vb_y = rbB.vy + world_rotation_vb[1];
+
+        std::cout << "vb: " << vb_x  << ", " << vb_y  << std::endl << std::flush;
+
+        // Find q_a and q_b velocities along the normal contact
+        float va_n = va_x*contact.n_x + va_y*contact.n_y;
+        float vb_n = vb_x*contact.n_x + vb_y*contact.n_y;
+
+        std::cout << "va_n: " << va_n << std::endl << std::flush;
+        std::cout << "vb_n: " << vb_n << std::endl << std::flush;
+
+        // Find the closing velocity
+        float vc = vb_n - va_n;
+
+        std::cout << "Closing velocity: " << vc << std::endl << std::flush;
+
+        if(vc<0)
+            continue;
+
+        // Find the closing velocity after the collision
+        float vc_s = - 0.88 * vc;
+
+        std::cout << "Closing velocity after: " << vc_s << std::endl << std::flush;
+
+        // Find the delta velocity
+        float actual_vc_change = abs(vc_s - vc);  
+
+        // Linear velocity change of qa and qb due to angular effect of unit impulse
+        // (Since the impulse is along the normal, we directly find the velocity change along the normal):
+        float dva_n = 1/rbA.m; 
+        float dvb_n = 1/rbB.m;                                        
+
+        // Closing velocity change due to linear effect of unit impulse:
+        float linear_effect = dva_n + dvb_n;
+
+        // Linear velocity change of qa due to angular effect of unit impulse:
+        float ua = abs(contact.qa_x * contact.n_y - contact.qa_y * contact.n_x);
+        float dwa = 1/rbA.I * ua;
+        float dva_x = dwa * contact.qa_y;
+        float dva_y = dwa * contact.qa_x;
+
+        dva_n = dva_x * contact.n_x + dva_y * contact.n_y;
+
+        // Linear velocity change of qb due to angular effect of unit impulse:
+        float ub = abs(contact.qb_x * contact.n_y - contact.qb_y * contact.n_x);
+        float dwb = 1/rbB.I * ub;
+        float dvb_x = dwb * contact.qb_y;
+        float dvb_y = dwb * contact.qb_x;
+
+        dvb_n = dvb_x * contact.n_x + dvb_y * contact.n_y;        
+
+        // Closing velocity change due to angular effect of unit impulse:
+        float angular_effect = dva_n + dvb_n;
+
+        // Total closing velocity change:
+        float vc_change_per_imp_unit = linear_effect+angular_effect;
+        
+        float imp_mag = actual_vc_change / vc_change_per_imp_unit;
+
+        std::cout << "Applied impulse magnitude: " << imp_mag << std::endl << std::flush;
+
+        // ====================================================================================
+        // Find the impulse direction (is just along the normal if there is no friction)
+
+        // ====================================================================================        
+        // Apply the impulse
+
+        impulse imp;
+        imp.d_x = contact.n_x;
+        imp.d_y = contact.n_y;
+        imp.mag = imp_mag;
+        imp.q_x = contact.qa_x;
+        imp.q_y = contact.qa_y;
+
+        apply_impulse( *contact.rb_a, imp);
+
+        imp.d_x = - imp.d_x;
+        imp.d_y = - imp.d_y;
+        imp.q_x = contact.qb_x;
+        imp.q_y = contact.qb_y;
+
+        apply_impulse( *contact.rb_b, imp);
+        
+        contact.resolved_impulse_mag = imp.mag;
+
+    }
+
+}
+
+void physic::solve_2dbox_contacts_interpenetration_linear_proj(){
+
+    for(int i = 0; i < box_contacts.size(); i++){
+        
+        contact_data contact = box_contacts[i];
+
+        // With this configuration, rbA contact happen on a vertex while rbB contact
+        // happen on a surface. Hence the normal of contact specify the normal surface of B
+        rigidbody_2d& rbA = *(contact.rb_a);
+        rigidbody_2d& rbB = *(contact.rb_b);
+        
+        float disp_x = contact.pen * contact.n_x *0.5f;
+        float disp_y = contact.pen * contact.n_y *0.5f;
+
+        rbA.x += disp_x;
+        rbA.y += disp_y;
+        rbB.x -= disp_x;
+        rbB.y -= disp_y;
+
+    }
+
+} */
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV         OLD CODE         VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV //   
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /* 
 void physic::generate_2dbox_contacts_data(std::vector<box_rigidbody_2d>& boxes){
 
@@ -813,171 +989,4 @@ void physic::get_max_contact_AtoB(contact_data& out_max_contact, box_rigidbody_2
             out_max_contact.qb_y = new_contact.qb_y;
         }    
     }
-}
-
-void physic::solve_2dbox_contacts_velocities(){
-
-    if(box_contacts.size() != 0){
-        std::cout << "===========================================" << std::endl << std::flush;
-        std::cout << "Contact Resolution Starting" << std::endl << std::flush;
-    }
-
-
-    for(int i = 0; i < box_contacts.size(); i++){
-
-        std::cout << "Solving contact: " << i << std::endl << std::flush;
-        
-
-        contact_data contact = box_contacts[i];
-
-        // With this configuration, rbA contact happen on a vertex while rbB contact
-        // happen on a surface. Hence the normal of contact specify the normal surface of B
-        rigidbody_2d& rbA = *(contact.rb_a);
-        rigidbody_2d& rbB = *(contact.rb_b);
-
-        mat4x4 model_matrix_A;
-        mat4x4 model_matrix_B;
-
-        build_2d_model_matrix(model_matrix_A, rbA.x, rbA.y, rbA.an);
-        build_2d_model_matrix(model_matrix_B, rbB.x, rbB.y, rbB.an);
-
-        // ====================================================================================
-        // Find the impulse magnitude
-
-        std::cout << "Contact normal: " << contact.n_x  << ", " << contact.n_y  << std::endl << std::flush;
-
-        // Find the world velocity of q_b
-        // Find the world velocity of the angular component:
-        float local_rotation_va_x = - rbB.w * contact.qa_y;
-        float local_rotation_va_y = - rbB.w * contact.qa_x;
-        vec4 local_rotation_va = { local_rotation_va_x, local_rotation_va_y, 0, 0};
-        vec4 world_rotation_va;
-        mat4x4_mul_vec4(world_rotation_va, model_matrix_B, local_rotation_va);
-
-        // Find the total world velocity of q_b:
-        float va_x = rbA.vx + world_rotation_va[0];
-        float va_y = rbA.vy + world_rotation_va[1];
-
-        std::cout << "va: " << va_x  << ", " << va_y  << std::endl << std::flush;
-
-        // Find the world velocity of q_b
-        // Find the world velocity of the angular component:
-        float local_rotation_vb_x = - rbB.w * contact.qb_y;
-        float local_rotation_vb_y = - rbB.w * contact.qb_x;
-        vec4 local_rotation_vb = { local_rotation_vb_x, local_rotation_vb_y, 0, 0};
-        vec4 world_rotation_vb;
-        mat4x4_mul_vec4(world_rotation_vb, model_matrix_B, local_rotation_vb);
-
-        // Find the total world velocity of q_b:
-        float vb_x = rbB.vx + world_rotation_vb[0];
-        float vb_y = rbB.vy + world_rotation_vb[1];
-
-        std::cout << "vb: " << vb_x  << ", " << vb_y  << std::endl << std::flush;
-
-        // Find q_a and q_b velocities along the normal contact
-        float va_n = va_x*contact.n_x + va_y*contact.n_y;
-        float vb_n = vb_x*contact.n_x + vb_y*contact.n_y;
-
-        std::cout << "va_n: " << va_n << std::endl << std::flush;
-        std::cout << "vb_n: " << vb_n << std::endl << std::flush;
-
-        // Find the closing velocity
-        float vc = vb_n - va_n;
-
-        std::cout << "Closing velocity: " << vc << std::endl << std::flush;
-
-        if(vc<0)
-            continue;
-
-        // Find the closing velocity after the collision
-        float vc_s = - 0.88 * vc;
-
-        std::cout << "Closing velocity after: " << vc_s << std::endl << std::flush;
-
-        // Find the delta velocity
-        float actual_vc_change = abs(vc_s - vc);  
-
-        // Linear velocity change of qa and qb due to angular effect of unit impulse
-        // (Since the impulse is along the normal, we directly find the velocity change along the normal):
-        float dva_n = 1/rbA.m; 
-        float dvb_n = 1/rbB.m;                                        
-
-        // Closing velocity change due to linear effect of unit impulse:
-        float linear_effect = dva_n + dvb_n;
-
-        // Linear velocity change of qa due to angular effect of unit impulse:
-        float ua = abs(contact.qa_x * contact.n_y - contact.qa_y * contact.n_x);
-        float dwa = 1/rbA.I * ua;
-        float dva_x = dwa * contact.qa_y;
-        float dva_y = dwa * contact.qa_x;
-
-        dva_n = dva_x * contact.n_x + dva_y * contact.n_y;
-
-        // Linear velocity change of qb due to angular effect of unit impulse:
-        float ub = abs(contact.qb_x * contact.n_y - contact.qb_y * contact.n_x);
-        float dwb = 1/rbB.I * ub;
-        float dvb_x = dwb * contact.qb_y;
-        float dvb_y = dwb * contact.qb_x;
-
-        dvb_n = dvb_x * contact.n_x + dvb_y * contact.n_y;        
-
-        // Closing velocity change due to angular effect of unit impulse:
-        float angular_effect = dva_n + dvb_n;
-
-        // Total closing velocity change:
-        float vc_change_per_imp_unit = linear_effect+angular_effect;
-        
-        float imp_mag = actual_vc_change / vc_change_per_imp_unit;
-
-        std::cout << "Applied impulse magnitude: " << imp_mag << std::endl << std::flush;
-
-        // ====================================================================================
-        // Find the impulse direction (is just along the normal if there is no friction)
-
-        // ====================================================================================        
-        // Apply the impulse
-
-        impulse imp;
-        imp.d_x = contact.n_x;
-        imp.d_y = contact.n_y;
-        imp.mag = imp_mag;
-        imp.q_x = contact.qa_x;
-        imp.q_y = contact.qa_y;
-
-        apply_impulse( *contact.rb_a, imp);
-
-        imp.d_x = - imp.d_x;
-        imp.d_y = - imp.d_y;
-        imp.q_x = contact.qb_x;
-        imp.q_y = contact.qb_y;
-
-        apply_impulse( *contact.rb_b, imp);
-        
-        contact.resolved_impulse_mag = imp.mag;
-
-    }
-
-}
-
-void physic::solve_2dbox_contacts_interpenetration_linear_proj(){
-
-    for(int i = 0; i < box_contacts.size(); i++){
-        
-        contact_data contact = box_contacts[i];
-
-        // With this configuration, rbA contact happen on a vertex while rbB contact
-        // happen on a surface. Hence the normal of contact specify the normal surface of B
-        rigidbody_2d& rbA = *(contact.rb_a);
-        rigidbody_2d& rbB = *(contact.rb_b);
-        
-        float disp_x = contact.pen * contact.n_x *0.5f;
-        float disp_y = contact.pen * contact.n_y *0.5f;
-
-        rbA.x += disp_x;
-        rbA.y += disp_y;
-        rbB.x -= disp_x;
-        rbB.y -= disp_y;
-
-    }
-
 } */

@@ -1,0 +1,17 @@
+#version 330
+uniform vec3 point_A;
+uniform vec3 point_B;
+uniform mat4 MVP;
+
+in int point_switch;
+
+void main()
+{
+	gl_PointSize = 4;
+	if(point_switch==0){
+		gl_Position = MVP * vec4(point_A.x, point_A.y, 0.0, 1.0);
+	}else{
+		gl_Position = MVP * vec4(point_B.x, point_B.y, 0.0, 1.0);
+	}		
+}
+

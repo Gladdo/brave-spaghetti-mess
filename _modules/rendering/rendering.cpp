@@ -28,7 +28,7 @@ GLuint rendering::quad_texture_shader::program_id;                          // I
 GLint rendering::quad_texture_shader::tex_unit_location;                    // Id della variabile uniform texUnit nel fragmentshader
 GLint rendering::quad_texture_shader::mvp_location;                         // Id della variabile uniform MVP nel vertexshader
 GLint rendering::quad_texture_shader::outline_location;                     // Id della variabile uniform outline nel vertexshader
-GLint rendering::quad_texture_shader::screen_width_ratio_location;                     // Id della variabile uniform outline nel vertexshader
+GLint rendering::quad_texture_shader::screen_width_ratio_location;          // Id della variabile uniform outline nel vertexshader
 
 // =========================================================================|
 //                                  init
@@ -180,21 +180,21 @@ void rendering::quad_texture_shader::set_uniform_screen_width_ratio(float ratio)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                          Debug Shader
+//                                          Debug Line Shader
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-rendering::debug_shader::gpu_line_data_buffers rendering::debug_shader::gpu_line_data;
-GLuint rendering::debug_shader::program_id;
-GLint rendering::debug_shader::point_A_location;
-GLint rendering::debug_shader::point_B_location;
-GLint rendering::debug_shader::mvp_location;
+rendering::debug_line_shader::gpu_line_data_buffers rendering::debug_line_shader::gpu_line_data;
+GLuint rendering::debug_line_shader::program_id;
+GLint rendering::debug_line_shader::point_A_location;
+GLint rendering::debug_line_shader::point_B_location;
+GLint rendering::debug_line_shader::mvp_location;
 
 // Definisce una serie di linee che compongono la shape di una freccia
 // La shape può essere modificata attraverso le funzioni:
 //    void set_arrow_stripe_length( float length );
 //    void set_arrow_stripe_width( float width );
 //    void set_arrow_stripe_tip_size( float length, float width);
-std::vector<float> rendering::debug_shader::arrow_stripe =
+std::vector<float> rendering::debug_line_shader::arrow_stripe =
 {   
     0.0,   0.5, 
     0.0,  -0.5,
@@ -210,12 +210,12 @@ std::vector<float> rendering::debug_shader::arrow_stripe =
 //                                init
 // =========================================================================|
 
-void rendering::debug_shader::init(){
+void rendering::debug_line_shader::init(){
     // ====================================================================================
     // Setup variable ids 
 
-    std::string vertex_shader_source = load_multiline_txt_to_string("resources/debug_vertex_shader_source.txt");
-    std::string fragment_shader_source = load_multiline_txt_to_string("resources/debug_fragment_shader_source.txt");
+    std::string vertex_shader_source = load_multiline_txt_to_string("resources/debug_line_vertex_shader_source.txt");
+    std::string fragment_shader_source = load_multiline_txt_to_string("resources/debug_line_fragment_shader_source.txt");
 
     // Compila e linka gli shader specificati nelle stringhe vertex_shader_source e fragment_shader_source creando il programma shader
     program_id = opengl_create_shader_program( vertex_shader_source.c_str(), fragment_shader_source.c_str() );
@@ -249,7 +249,7 @@ void rendering::debug_shader::init(){
 
     // -------------------------------------------------------------------------|
     // Configura il VAO ( lega i dati nel buffer vbo all'input dello shader )
-    // Bind the VAO to the debug_shader; specifica nel VAO come lo shader deve legarle i dati nel VBO ai suoi input.
+    // Bind the VAO to the debug_line_shader; specifica nel VAO come lo shader deve legarle i dati nel VBO ai suoi input.
     // Questo VAO è poi bindato quando lo shader viene eseguito sui dati della mesh
 
     glUseProgram(program_id);
@@ -280,7 +280,7 @@ void rendering::debug_shader::init(){
 //                          set_uniform_point_A
 // =========================================================================|
 
-void rendering::debug_shader::set_uniform_point_A(float x_pos, float y_pos, float z_pos){
+void rendering::debug_line_shader::set_uniform_point_A(float x_pos, float y_pos, float z_pos){
     glUniform3f(point_A_location, x_pos, y_pos, z_pos);
 }
 
@@ -288,7 +288,7 @@ void rendering::debug_shader::set_uniform_point_A(float x_pos, float y_pos, floa
 //                          set_uniform_point_B
 // =========================================================================|
 
-void rendering::debug_shader::set_uniform_point_B(float x_pos, float y_pos, float z_pos){
+void rendering::debug_line_shader::set_uniform_point_B(float x_pos, float y_pos, float z_pos){
     glUniform3f(point_B_location, x_pos, y_pos, z_pos);
 }
 
@@ -296,14 +296,14 @@ void rendering::debug_shader::set_uniform_point_B(float x_pos, float y_pos, floa
 //                          set_uniform_mvp
 // =========================================================================|
 
-void rendering::debug_shader::set_uniform_mvp(GLfloat mvp[16]){
+void rendering::debug_line_shader::set_uniform_mvp(GLfloat mvp[16]){
     glUniformMatrix4fv(mvp_location, 1, GL_FALSE, mvp);
 }
 
 // =========================================================================|
 //                              draw_2d_point
 // =========================================================================|
-void rendering::debug_shader::draw_2d_point( float world_x_pos, float world_y_pos ){
+void rendering::debug_line_shader::draw_2d_point( float world_x_pos, float world_y_pos ){
 
     
     glEnable(GL_PROGRAM_POINT_SIZE);
@@ -334,7 +334,7 @@ void rendering::debug_shader::draw_2d_point( float world_x_pos, float world_y_po
 //                          draw_2d_line_stripe
 // =========================================================================|
 
-void rendering::debug_shader::draw_2d_line_stripe( float stripe_pos_x, float stripe_pos_y, float stripe_rot, std::vector<float> stripe){
+void rendering::debug_line_shader::draw_2d_line_stripe( float stripe_pos_x, float stripe_pos_y, float stripe_rot, std::vector<float> stripe){
     
     // Prepare the mvp
     float mvp [16];
@@ -363,7 +363,7 @@ void rendering::debug_shader::draw_2d_line_stripe( float stripe_pos_x, float str
 //                        set_arrow_stripe_length
 // =========================================================================|
 
-void rendering::debug_shader::set_arrow_stripe_length(float length){
+void rendering::debug_line_shader::set_arrow_stripe_length(float length){
     arrow_stripe[4]=length;
     arrow_stripe[6]=length;
     arrow_stripe[10]=length;
@@ -374,7 +374,7 @@ void rendering::debug_shader::set_arrow_stripe_length(float length){
 //                        set_arrow_stripe_width
 // =========================================================================|
 
-void rendering::debug_shader::set_arrow_stripe_width(float width){
+void rendering::debug_line_shader::set_arrow_stripe_width(float width){
     arrow_stripe[1]=width;
     arrow_stripe[3]=-width;
     arrow_stripe[5]=-width;
@@ -382,12 +382,174 @@ void rendering::debug_shader::set_arrow_stripe_width(float width){
     arrow_stripe[15]=width;
 }
 
-void rendering::debug_shader::set_arrow_stripe_tip_size(float length, float width){
+void rendering::debug_line_shader::set_arrow_stripe_tip_size(float length, float width){
     arrow_stripe[7]=-width;
     arrow_stripe[11]=width;
 
     // pick any coordinate which contains the arrow length and add the length offset to it
     arrow_stripe[8]=arrow_stripe[4]+length;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                          Debug Circle Shader
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// -------------------------------------------------------------------------|
+// Quad Texture Shader data
+
+// Containers for ids containing quad mesh data in the GPU
+rendering::debug_circle_shader::gpu_mesh_data_buffers rendering::debug_circle_shader::quad_mesh_data_buffers;
+
+// Elements Ids 
+GLuint rendering::debug_circle_shader::program_id;                          // Id dello shader program presente sulla GPU
+
+// Uniforms
+GLint rendering::debug_circle_shader::mvp_location;                         // Id della variabile uniform MVP nel vertexshader
+GLint rendering::debug_circle_shader::radius_location;
+GLint rendering::debug_circle_shader::circle_width_location;
+GLint rendering::debug_circle_shader::impulse_axis_location;
+GLint rendering::debug_circle_shader::time_location;                       
+
+
+// =========================================================================|
+//                                  init
+// =========================================================================|
+
+// Description:
+// Crea un buffer (vbo) sulla memoria GPU e ci carica i vertici di un quad 
+// (specificati nel file resources/tex_vertex_data.txt).
+// Successivamente è creato e configurato un buffer vao che specifica:
+//      - l'id del vbo da cui leggere i dati
+//      - Come interpretare i dati nel vbo e come si legano all'input dello shader
+//
+void rendering::debug_circle_shader::init(){
+
+    // -------------------------------------------------------------------------|
+    // Setup variable ids 
+
+    std::string vertex_shader_source = load_multiline_txt_to_string("resources/debug_circle_vertex_shader_source.txt");
+    std::string fragment_shader_source = load_multiline_txt_to_string("resources/debug_circle_fragment_shader_source.txt");
+
+    // Compila e linka gli shader specificati nelle stringhe vertex_shader_source e fragment_shader_source creando il programma shader
+    program_id = opengl_create_shader_program( vertex_shader_source.c_str(), fragment_shader_source.c_str() );
+ 
+    // Carica l'id delle variabili uniform del programma (per poterle successivamente accedere):
+    mvp_location = glGetUniformLocation(program_id, "MVP");
+    radius_location = glGetUniformLocation(program_id, "radius");
+    circle_width_location = glGetUniformLocation(program_id, "circle_width");
+    impulse_axis_location = glGetUniformLocation(program_id, "impulse_axis");
+    time_location = glGetUniformLocation(program_id, "time");
+
+    // -------------------------------------------------------------------------|
+    // Setup vertex data
+
+    // Load vertex data from file to RAM
+    std::vector<float> quad_vertex_data = load_txt_to_float_vector("resources/circle_quad_vertex_data.txt");
+
+    // Load vertex data on GPU and configure vertex shader pointers (VAO): 
+    init_quad_mesh_buffers( quad_vertex_data.size(), quad_vertex_data.data() );
+}
+
+// =========================================================================|
+//                          init_quad_mesh_buffers
+// =========================================================================|
+
+void rendering::debug_circle_shader::init_quad_mesh_buffers(int vertex_array_length, const float* vertex_array_data){
+
+    // Crea riferimenti ai side effects di questa funzione
+    GLuint& vbo_id = quad_mesh_data_buffers.mesh_vertexes_data_buffer_id;
+    GLuint& vao_id = quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id;
+    int& vertex_number = quad_mesh_data_buffers.mesh_vertex_number;
+
+    // Numero di valori per ciascun vertice; dipende da quanti valori prende in input il vertex shader
+    const int vertex_size = 2;
+
+    // Se il numero di valori nell'array float non è un multiplo del size dei vertici, assert il missmatch
+    if (vertex_array_length%vertex_size != 0){
+        std::cerr << "Error: Mismatch between shader attributes and vertex size in texture_shader_configuration" << std::endl << std::flush;
+    }
+
+    // Imposta il numero di vertici presenti nella mesh
+    vertex_number = vertex_array_length/vertex_size;
+
+    // -------------------------------------------------------------------------|
+    // Carica i dati sulla GPU 
+
+    // Binda il VAO; in questo modo il VBO successivamente bindato e le sue configurazioni vengono associate a questo VAO
+    glGenVertexArrays(1, &(vao_id));
+    glBindVertexArray(vao_id);
+
+    // Genera il VBO, bindalo e caricaci i dati (trasferiscili da RAM a GPU)
+    glGenBuffers(1, &(vbo_id));
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*vertex_array_length, vertex_array_data, GL_STATIC_DRAW);
+
+    // -------------------------------------------------------------------------|
+    // Configura il VAO ( lega i dati della mesh all'input dello shader )
+    // Bind the mesh VAO to the quad texture shader; specifica nel VAO come lo shader deve legarli ai suoi input.
+    // Questo VAO è poi bindato quando lo shader viene eseguito sui dati della mesh
+
+    glUseProgram(program_id);
+
+    // Id delle variabili attributo vTexCoord e VPos del vertexshader
+    GLint vpos_location, vuv_location;
+
+    // Carica l'id delle variabili attributo del programma:
+    vpos_location = glGetAttribLocation(program_id, "vPos");
+    
+    // Dimensione di ciascun attributo
+    const int attrib_pos_size = 2;
+
+    // Attiva/inizializza l'attributo vPos dello shader
+    glEnableVertexAttribArray(vpos_location);
+    
+    // Lega l'attributo vPos dello shader ai primi due valori di ciascun vertice nel VBO
+    glVertexAttribPointer(vpos_location, attrib_pos_size, GL_FLOAT, GL_FALSE, sizeof(float)*vertex_size, (void*) 0);
+
+    glUseProgram(0);
+
+    // Unbinda il VAO così che successive call al contesto di OpenGL non vadano implicitamente a modificarlo
+    glBindVertexArray(0);
+}
+
+// =========================================================================|
+//                          set_uniform_mvp
+// =========================================================================|
+
+void rendering::debug_circle_shader::set_uniform_mvp(GLfloat mvp[16]){
+    glUniformMatrix4fv(mvp_location, 1, GL_FALSE, mvp);
+}
+
+// =========================================================================|
+//                          set_uniform_radius
+// =========================================================================|
+
+void rendering::debug_circle_shader::set_uniform_radius(GLfloat radius){
+    glUniform1f(radius_location, radius);
+}
+
+// =========================================================================|
+//                          set_uniform_radius
+// =========================================================================|
+
+void rendering::debug_circle_shader::set_uniform_circle_width(GLfloat circle_width){
+    glUniform1f(circle_width_location, circle_width);
+}
+
+// =========================================================================|
+//                          set_uniform_impulse_axis
+// =========================================================================|
+
+void rendering::debug_circle_shader::set_uniform_impulse_axis(float x, float y){
+    glUniform2f(impulse_axis_location, x, y);
+}
+
+// =========================================================================|
+//                           set_uniform_time
+// =========================================================================|
+
+void rendering::debug_circle_shader::set_uniform_time(GLfloat time){
+    glUniform1f(time_location, time);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

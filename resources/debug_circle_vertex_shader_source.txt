@@ -1,0 +1,25 @@
+#version 330
+
+in vec2 vPos;
+
+uniform mat4 MVP;
+uniform float radius;
+uniform float circle_width;
+uniform vec2 impulse_axis;
+
+out vec2 fragCoord;
+out float f_radius;
+out float f_circle_width;
+out vec2 f_impulse_axis;
+
+void main()
+{
+	gl_Position = MVP * vec4(vPos * radius, 0.0, 1.0);
+
+	fragCoord = vec2( sign(vPos.x) * radius, sign(vPos.y)* radius ); 
+
+	f_radius = radius;
+	f_circle_width = circle_width;
+	f_impulse_axis = impulse_axis;
+}
+

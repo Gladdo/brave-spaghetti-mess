@@ -1,0 +1,22 @@
+#version 330
+out vec4 FragColor;
+
+in vec2 fragCoord;
+in float f_radius;
+in float f_circle_width;
+in vec2 f_impulse_axis;
+
+void main()
+{
+	vec2 impulse_wave_dir = normalize( vec2(- f_impulse_axis.y, f_impulse_axis.x ) );
+	if( abs( dot( fragCoord, impulse_wave_dir ) ) > f_radius * 0.5 ){
+		discard;
+	}
+	
+	if( length(fragCoord) > f_radius || length(fragCoord) < f_radius - f_circle_width){
+		discard;
+	}
+
+	FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+
+}

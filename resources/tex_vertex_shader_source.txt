@@ -33,7 +33,7 @@ void main()
 	vec2 explodedNormal = normalize( normal_x + normal_y ) * border_width;
 	explodedNormal.x = explodedNormal.x / screen_width_ratio;
 	
-    	vec4 tmp_gl_pos = vec4( pos.x + explodedNormal.x , pos.y + explodedNormal.y , 0.0, 1.0 );
+    	vec4 tmp_gl_pos = vec4( pos.x + explodedNormal.x , pos.y + explodedNormal.y , outline * 0.5, 1.0 );
 	
 	box_halfwidth_pos.x = box_halfwidth_pos.x * screen_width_ratio;
 	box_halfheight_pos.x = box_halfheight_pos.x * screen_width_ratio;
