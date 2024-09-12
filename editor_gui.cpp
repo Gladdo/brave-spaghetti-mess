@@ -178,6 +178,57 @@ void gui::render_gui(){
             }
 
             // ====================================================================================
+            // Rigidbody data
+            ImGui::BulletText("Rigidbody");
+
+            // ------------------------------------------------------------------------------------
+            // Velocity
+            
+            static float rb_vel_ui[2] = { 0.0f, 0.0f};
+
+            if(ImGui::InputFloat2("X-Y vel", rb_vel_ui)){
+                rb.vel_x = rb_vel_ui[0];
+                rb.vel_y = rb_vel_ui[1];
+            }else{
+                rb_vel_ui[0] = rb.vel_x;
+                rb_vel_ui[1] = rb.vel_y;
+            }
+
+            // ------------------------------------------------------------------------------------
+            // Angular Velocity
+
+            static float rb_w_ui;
+
+            if(ImGui::InputFloat("w", &rb_w_ui)){
+                rb.w = rb_w_ui;
+            }else{
+                rb_w_ui = rb.w;
+            }
+
+            // ------------------------------------------------------------------------------------
+            // Mass
+
+            static float rb_m_ui;
+
+            if(ImGui::InputFloat("Mass", &rb_m_ui)){
+                rb.m = rb_m_ui;
+            }else{
+                rb_m_ui = rb.m;
+            }
+
+            // ------------------------------------------------------------------------------------
+            // Inertia Moment
+
+            static float rb_i_ui;
+
+            if(ImGui::InputFloat("Moment", &rb_i_ui)){
+                rb.I = rb_i_ui;
+            }else{
+                rb_i_ui = rb.I;
+            }
+
+
+            // ====================================================================================
             // 
 
             // Show starting impulses configurations only if the simulation is not running.

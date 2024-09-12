@@ -187,7 +187,7 @@ bool physic::dim2::check_pointbox_collision(
 std::vector<physic::dim2::contact_data> physic::dim2::contacts;
 
 // =========================================================================|
-//                         collision_dispatcher
+//                         contact_detection_dispatcher
 // =========================================================================|
 // Check all the elements inside the world_bodies vector with each other and
 // dispatch the appropriate collision detection and contact generation 
@@ -196,7 +196,7 @@ std::vector<physic::dim2::contact_data> physic::dim2::contacts;
 //
 // This function deals with both the broad phase and the narrow phase.
 //
-void physic::dim2::collision_dispatcher(std::vector<std::pair<rigidbody*, collider*>>& world_bodies){
+void physic::dim2::contact_detection_dispatcher(std::vector<std::pair<rigidbody*, collider*>>& world_bodies){
 
     if(world_bodies.size()<= 1)
         return;
@@ -568,6 +568,313 @@ physic::dim2::contact_data physic::dim2::generate_pointbox_contactdata_naive_alg
     }
         
     return res_contact;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                CONTACT SOLVER
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// =========================================================================|
+//                       contact_solver_dispatcher
+// =========================================================================|
+
+void physic::dim2::contact_solver_dispatcher(){
+
+    for( contact_data& contact : contacts){
+
+        solve_velocity(contact);
+        solve_interpenetration(contact);
+
+    }
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                        CONTACT SOLVER: Velocity solver
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Determina le velocità in risposta al contatto
+//
+
+void physic::dim2::solve_velocity(contact_data& contact){
+
+    // Note: With this configuration, rbA contact happen on a vertex while rbB contact
+    // happen on a surface. Hence the normal of contact specify the normal surface of B
+
+    // ====================================================================================
+    // Setup model matrices for each rigid body
+
+    rigidbody& rbA = *(contact.rb_a);
+    rigidbody& rbB = *(contact.rb_b);
+
+    mat4x4 model_matrix_A;
+    mat4x4 model_matrix_B;
+
+    build_model_matrix(model_matrix_A, rbA.pos_x, rbA.pos_y, rbA.angle);
+    build_model_matrix(model_matrix_B, rbB.pos_x, rbB.pos_y, rbB.angle);
+
+    // ====================================================================================
+    // Find the world velocity of the point q_a on rbA.
+    // The total velocity is composed by 2 components:
+    //      - The linear velocity of the rigdbody center of mass
+    //      - The angular velocity of the rigidbody itself
+    //
+    // To find the total velocity we must find the linear velocity caused by each component
+    // and sum them:
+    //      
+    //  ○   Tot_qa_velocity = rbA_linear_velocity + linear_qa_angular_velocity
+    // 
+
+    // ------------------------------------------------------------------------------------
+    // Find the linear velocity effect on qa caused by rbA angular velocity:
+
+    // Find the linear velocity on qa caused by the angular velocity of the rigid body, 
+    // in the model space of the rigidbody: (from v = w ∧ r )
+    //
+    //  ○   local_v = rbA.w ∧ q_a
+    //
+    float local_va_x = rbA.w * contact.qa_y;
+    float local_va_y = - rbA.w * contact.qa_x;
+
+    // Translate the previous velocity vector from model space to world space
+    vec4 local_rotation_va = { local_va_x, local_va_y, 0, 0};
+    vec4 world_rotation_va;
+    mat4x4_mul_vec4(world_rotation_va, model_matrix_B, local_rotation_va);
+
+    // ------------------------------------------------------------------------------------
+    // Find the total world velocity of q_a:
+
+    float va_x = rbA.vel_x + world_rotation_va[0];
+    float va_y = rbA.vel_y + world_rotation_va[1];
+
+    // ====================================================================================
+    // Find the world velocity of the point q_b on rbB.
+    // The total velocity is composed by 2 components:
+    //      - The linear velocity of the rigdbody center of mass
+    //      - The angular velocity of the rigidbody itself
+    //
+    // To find the total velocity we must find the linear velocity caused by each component
+    // and sum them:
+    //      
+    //  ○   Tot_qb_velocity = rbB_linear_velocity + linear_qb_angular_velocity
+    // 
+
+    // ------------------------------------------------------------------------------------
+    // Find the linear velocity effect on qb caused by rbB angular velocity:
+
+    // Find the linear velocity on qa caused by the angular velocity of the rigid body, 
+    // in the model space of the rigidbody: (from v = w ∧ r )
+    //      
+    //  ○   local_v = rbB.w ∧ q_b
+    //
+
+    float local_vb_x = rbB.w * contact.qb_y;
+    float local_vb_y = - rbB.w * contact.qb_x;
+
+    // Translate the previous velocity vector from model space to world space
+    vec4 local_rotation_vb = { local_vb_x, local_vb_y, 0, 0};
+    vec4 world_rotation_vb;
+    mat4x4_mul_vec4(world_rotation_vb, model_matrix_B, local_rotation_vb);
+
+    // ------------------------------------------------------------------------------------
+    // Find the total world velocity of q_b:
+
+    float vb_x = rbB.vel_x + world_rotation_vb[0];
+    float vb_y = rbB.vel_y + world_rotation_vb[1];
+
+    // ====================================================================================
+    // Find the velocity at which points q_a and q_b are approaching (closing velocity)
+
+    // ------------------------------------------------------------------------------------
+    // Now we have the world velocity va and vb of the points q_a and q_b.
+    // We first find velocities of q_a and q_b along the normal contact; to do so we 
+    // project va and vb along n using the dot product:
+    //      
+    //  ○   va_n = va ⋅ n
+    //  ○   vb_n = vb ⋅ n
+    //
+
+    float va_n = va_x*contact.n_x + va_y*contact.n_y;
+    float vb_n = vb_x*contact.n_x + vb_y*contact.n_y;
+
+    // ------------------------------------------------------------------------------------
+    // Find the closing velocity: 
+    // This is just a scalar representing a relative velocity along the normal of contact
+    //
+
+    float vc = vb_n - va_n;
+
+    // If the closing velocity is negative, it means the two points are already
+    // separating, hence exit the function
+    if(vc<0)
+        return;
+
+    // ------------------------------------------------------------------------------------
+    // Find the closing velocity after the collision
+
+    float vc_s = - 0.88 * vc;
+
+    // ------------------------------------------------------------------------------------
+    // Find the delta velocity:
+    // This is the difference between the closing velocity before and after the collision.
+    // It will be used to determine the nature of the impulse (which indeed produces this
+    // change in velocity)
+    //
+
+    float actual_vc_change = abs(vc_s - vc);  
+
+    // ====================================================================================
+    // Determine the effect of a unit impulse on the contact points:
+    // We must determine the impulse that cause the previous velocity change.
+    // To do so we first study the effect of an unit impulse on the different kind of 
+    // velocities when applied on the contact points (with a direction equal to the
+    // normal of contact).
+    //
+
+    // ------------------------------------------------------------------------------------
+    // Unit impulse effect on linear velocity:
+    // We first find the change of linear velocity of the contact points due to the effect 
+    // of a unit impulse:
+    // (Since the impulse is along the normal, we directly find the velocity change along 
+    // the normal)
+    // From J = p1 - p2 = v1*m - v2*m we have:
+    //
+    //  ○   dv = |J| / mass = 1 / mass
+    //
+
+    float dva_n = 1/rbA.m; 
+    float dvb_n = 1/rbB.m;                                        
+
+    // Total closing velocity change due to linear effect of unit impulse:
+    float linear_effect = dva_n + dvb_n;
+
+    // ------------------------------------------------------------------------------------
+    // Unit impulse effect on angular velocity:
+    // Now we find the linear velocity change of qa due to angular effect of unit impulse:
+
+    // We first find the impulsive torque of a unit impulse:
+    // 
+    //  ○   u = J ∧ q
+    //
+    // In this case J = (n_x, n_y), hence we have:
+
+    float ua = abs(contact.qa_x * contact.n_y - contact.qa_y * contact.n_x);
+    
+    // We then find the change in angular velocity with: (from 𝜏 = F ∧ r = Iα )
+    //
+    //  ○   dw = u / I
+    //
+
+    float dwa = 1/rbA.I * ua;
+    
+    // We then find the change in linear velocity produced by the previous change in 
+    // angular velocity:
+    //
+    //  ○   dv = dw ∧ q
+    //
+
+    float dva_x = dwa * contact.qa_y;
+    float dva_y = - dwa * contact.qa_x;
+
+    // Finally we're interested only in the previous change of velocity ALONG the
+    // contact normal (because we want to see the effect of the unit impulse
+    // on the velocity along that normal )
+
+    dva_n = dva_x * contact.n_x + dva_y * contact.n_y;
+
+    // ------------------------------------------------------------------------------------
+    // Unit impulse effect on angular velocity:
+    // Now we find the linear velocity change of qb due to angular effect of unit impulse:
+
+    // We first find the impulsive torque of a unit impulse:
+    // 
+    //  ○   u = J ∧ q
+    //
+    // In this case J = (n_x, n_y), hence we have:
+
+    float ub = abs(contact.qb_x * contact.n_y - contact.qb_y * contact.n_x);
+
+    // We then find the change in angular velocity with: (from 𝜏 = F ∧ r = Iα )
+    //
+    //  ○   dw = u / I
+    //
+
+    float dwb = 1/rbB.I * ub;
+
+    // We then find the change in linear velocity produced by the previous change in 
+    // angular velocity:
+    //
+    //  ○   dv = dw ∧ q
+    //
+
+    float dvb_x = dwb * contact.qb_y;
+    float dvb_y = - dwb * contact.qb_x;
+
+    // Finally we're interested only in the previous change of velocity ALONG the
+    // contact normal (because we want to see the effect of the unit impulse
+    // on the velocity along that normal )
+
+    dvb_n = dvb_x * contact.n_x + dvb_y * contact.n_y;        
+
+    // ------------------------------------------------------------------------------------
+    // Total closing velocity change due to angular effect of unit impulse:
+    float angular_effect = dva_n + dvb_n;
+
+    // ====================================================================================
+
+    // Total closing velocity change: With respect to the model of this contact, a unit 
+    // impulse on the contact point produces a change on the closing velocity equals to: 
+
+    float vc_change_per_imp_unit = linear_effect+angular_effect;
+    
+    // Hence, the impulse that produced the actual change in closing velocity must have
+    // a magnitude equal to:
+    
+    float imp_mag = actual_vc_change / vc_change_per_imp_unit;
+
+    // ====================================================================================        
+    // Apply the impulse
+
+    impulse imp;
+    imp.d_x = contact.n_x;
+    imp.d_y = contact.n_y;
+    imp.mag = imp_mag;
+    imp.q_x = contact.qa_x;
+    imp.q_y = contact.qa_y;
+
+    apply_impulse( *contact.rb_a, imp);
+
+    imp.d_x = - imp.d_x;
+    imp.d_y = - imp.d_y;
+    imp.q_x = contact.qb_x;
+    imp.q_y = contact.qb_y;
+
+    apply_impulse( *contact.rb_b, imp);
+    
+    contact.resolved_impulse_mag = imp.mag;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                        CONTACT SOLVER: Interpenetration solver
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Risolve le interpenetrazioni presenti alla registrazione del contatto
+//
+
+void physic::dim2::solve_interpenetration(contact_data& contact){
+
+    // With this configuration, rbA contact happen on a vertex while rbB contact
+    // happen on a surface. Hence the normal of contact specify the normal surface of B
+    rigidbody& rbA = *(contact.rb_a);
+    rigidbody& rbB = *(contact.rb_b);
+    
+    float disp_x = contact.pen * contact.n_x *0.5f;
+    float disp_y = contact.pen * contact.n_y *0.5f;
+
+    rbA.pos_x += disp_x;
+    rbA.pos_y += disp_y;
+    rbB.pos_x -= disp_x;
+    rbB.pos_y -= disp_y;
+
 }
 
 /*

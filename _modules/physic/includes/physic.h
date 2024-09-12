@@ -117,7 +117,7 @@ namespace physic{
         // Contact generation functions:
         // Queste funzioni popolano il vettore di contatti "std::vector<contact_data> contacts"
 
-        void collision_dispatcher(std::vector<std::pair<rigidbody*, collider*>>& world_bodies);
+        void contact_detection_dispatcher(std::vector<std::pair<rigidbody*, collider*>>& world_bodies);
 
         // Restituisce il contatto del vertice di A con profondità maggiore in B
         
@@ -125,15 +125,21 @@ namespace physic{
         contact_data generate_boxboxvertices_max_contactdata(rigidbody& A, rigidbody& B, collider_box& coll_A, collider_box& coll_B);
         contact_data generate_pointbox_contactdata_naive_alg(float w_point_x, float w_point_y, rigidbody& rb, collider_box& coll);
 
-/*
+
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                           CONTACT RESOLUTION
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                                OLD
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        void contact_solver_dispatcher();
+        void solve_velocity(contact_data& contact);
+        void solve_interpenetration(contact_data& contact);
+    }
+}
+
+
+/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                OLD
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // ====================================================================================
         // Structures declarations
@@ -160,8 +166,5 @@ namespace physic{
         void solve_2dbox_contacts_velocities();
 
         void build_2d_model_matrix(mat4x4& mm, float x_pos, float y_pos, float z_angle); */
-    }
-}
-
 
 

@@ -24,8 +24,8 @@ std::chrono::duration<float> delta_time;
 // ====================================================================================
 // Functions prototypes
 
-void DEBUG_naive_collisions_alg_physic();
-void DEBUG_naive_collisions_alg_rendering();
+void DEBUG_naive_contact_detection_alg_physic();
+void DEBUG_naive_contact_detection_alg_rendering();
 
 int main(void){
 
@@ -166,11 +166,17 @@ int main(void){
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                         COLLISION DEBUG: PHYSIC
+        //                                        COLLISION DETECTION: PHYSIC
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // Populate physic::dim2::contacts vector with collision between game world colliders
-        DEBUG_naive_collisions_alg_physic();
+        DEBUG_naive_contact_detection_alg_physic();
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                         COLLISION SOLVER: PHYSIC
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        physic::dim2::contact_solver_dispatcher();
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                      UPDATE GAME OBJECTS TRANSFORMS
@@ -325,14 +331,14 @@ int main(void){
         glDisable(GL_DEPTH_TEST);  
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                         COLLISION DEBUG: RENDERING
+        //                                    COLLISION DETECTION: RENDERING
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Renders data inside physic::dim2::contacts vector
         
-        DEBUG_naive_collisions_alg_rendering();        
+        DEBUG_naive_contact_detection_alg_rendering();        
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                      COLLISION SOLVER DEBUG: RENDERING 
+        //                                      COLLISION SOLVER: RENDERING 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         for( int i = 0; i < physic::dim2::contacts.size(); i++ ){
@@ -576,7 +582,7 @@ int main(void){
 // Checks for collision between the shapes inside the "world_bodies" vector.
 // Populate physic::dim2::contacts vector with those collision.
 //
-void DEBUG_naive_collisions_alg_physic(){
+void DEBUG_naive_contact_detection_alg_physic(){
 
     // ====================================================================================
     // Reset contact vector from eventual unresolved contacts from previous frame
@@ -599,7 +605,7 @@ void DEBUG_naive_collisions_alg_physic(){
     // Launch the dispatcher
 
     // Populates "phyisic::dim2::contacts" vector
-    physic::dim2::collision_dispatcher(world_bodies);    
+    physic::dim2::contact_detection_dispatcher(world_bodies);    
 
 }
 
@@ -608,7 +614,7 @@ void DEBUG_naive_collisions_alg_physic(){
 // =========================================================================|
 // Renders visually the data inside the physic::dim2::contacts vector 
 //
-void DEBUG_naive_collisions_alg_rendering(){
+void DEBUG_naive_contact_detection_alg_rendering(){
     
     glUseProgram(rendering::debug_line_shader::program_id);
     glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
@@ -695,7 +701,7 @@ void DEBUG_contact_response_physic_step(){
         }
 
         // Populate "phyisic::dim2::contacts" vector
-        physic::dim2::collision_dispatcher(world_bodies);  
+        physic::dim2::contact_detection_dispatcher(world_bodies);  
 
         // ====================================================================================
         // Solve collisions by generating impulses
