@@ -1,5 +1,6 @@
 #include "physic.h"
 #include <iostream>
+#include <algorithm>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                 UTILITY
@@ -757,7 +758,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // change in velocity)
     //
 
-    float actual_vc_change = abs(vc_s + vc);   
+    float actual_vc_change = std::min(abs(vc_s + vc), 2.f );   
 
     // ====================================================================================
     // Determine the effect of a unit impulse on the contact points:
@@ -797,7 +798,6 @@ void physic::dim2::solve_velocity(contact_data& contact){
 
         vec2 normalizer = {ms_n[0], ms_n[1]};
         float norm = vec2_len( normalizer);
-        
         
         ms_na_x = normalizer[0] / norm;
         ms_na_y = normalizer[1] / norm;
