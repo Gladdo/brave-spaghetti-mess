@@ -103,10 +103,10 @@ void physic::dim2::apply_impulse(rigidbody& rb, impulse impulse){
     // Angular velocity update
 
     // Find the impulsive torque (q ∧ impulse)
-    float imp_torq_z = impulse.q_x * impulse.d_x * impulse.mag - impulse.q_y * impulse.d_y * impulse.mag;
+    float imp_torq_z = impulse.q_x * impulse.d_y * impulse.mag - impulse.q_y * impulse.d_x * impulse.mag;
     
-    // Angular velocity update
-    rb.w = rb.w + rb.I * imp_torq_z;
+    // Angular velocity update: from 𝜏 = Iw
+    rb.w = rb.w + 1/rb.I * imp_torq_z;
 
 }
 
@@ -632,11 +632,11 @@ void physic::dim2::solve_velocity(contact_data& contact){
     //
     //  ○   local_v = rbA.w ∧ q_a
     //
-    float local_va_x = rbA.w * contact.qa_y;
-    float local_va_y = - rbA.w * contact.qa_x;
+    float local_va_x = - rbA.w * contact.qa_y;
+    float local_va_y = rbA.w * contact.qa_x;
 
     // Translate the previous velocity vector from model space to world space
-    vec4 local_rotation_va = { local_va_x, local_va_y, 0, 0};
+    vec4 local_rotation_va = { local_va_x, local_va_y, 0, 1};
     vec4 world_rotation_va;
     mat4x4_mul_vec4(world_rotation_va, model_matrix_B, local_rotation_va);
 
@@ -667,11 +667,11 @@ void physic::dim2::solve_velocity(contact_data& contact){
     //  ○   local_v = rbB.w ∧ q_b
     //
 
-    float local_vb_x = rbB.w * contact.qb_y;
-    float local_vb_y = - rbB.w * contact.qb_x;
+    float local_vb_x = - rbB.w * contact.qb_y;
+    float local_vb_y = rbB.w * contact.qb_x;
 
     // Translate the previous velocity vector from model space to world space
-    vec4 local_rotation_vb = { local_vb_x, local_vb_y, 0, 0};
+    vec4 local_rotation_vb = { local_vb_x, local_vb_y, 0, 1};
     vec4 world_rotation_vb;
     mat4x4_mul_vec4(world_rotation_vb, model_matrix_B, local_rotation_vb);
 
@@ -720,7 +720,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // change in velocity)
     //
 
-    float actual_vc_change = abs(vc_s - vc);  
+    float actual_vc_change = abs(vc_s + vc);  
 
     // ====================================================================================
     // Determine the effect of a unit impulse on the contact points:
@@ -753,11 +753,11 @@ void physic::dim2::solve_velocity(contact_data& contact){
 
     // We first find the impulsive torque of a unit impulse:
     // 
-    //  ○   u = J ∧ q
+    //  ○   u = q ∧ J
     //
     // In this case J = (n_x, n_y), hence we have:
 
-    float ua = abs(contact.qa_x * contact.n_y - contact.qa_y * contact.n_x);
+    float ua = contact.qa_x * contact.n_y - contact.qa_y * contact.n_x ;
     
     // We then find the change in angular velocity with: (from 𝜏 = F ∧ r = Iα )
     //
@@ -772,8 +772,8 @@ void physic::dim2::solve_velocity(contact_data& contact){
     //  ○   dv = dw ∧ q
     //
 
-    float dva_x = dwa * contact.qa_y;
-    float dva_y = - dwa * contact.qa_x;
+    float dva_x = - dwa * contact.qa_y;
+    float dva_y = dwa * contact.qa_x;
 
     // Finally we're interested only in the previous change of velocity ALONG the
     // contact normal (because we want to see the effect of the unit impulse
@@ -787,11 +787,11 @@ void physic::dim2::solve_velocity(contact_data& contact){
 
     // We first find the impulsive torque of a unit impulse:
     // 
-    //  ○   u = J ∧ q
+    //  ○   u = q ∧ J
     //
     // In this case J = (n_x, n_y), hence we have:
 
-    float ub = abs(contact.qb_x * contact.n_y - contact.qb_y * contact.n_x);
+    float ub = contact.qb_x * contact.n_y - contact.qb_y * contact.n_x;
 
     // We then find the change in angular velocity with: (from 𝜏 = F ∧ r = Iα )
     //
@@ -806,8 +806,8 @@ void physic::dim2::solve_velocity(contact_data& contact){
     //  ○   dv = dw ∧ q
     //
 
-    float dvb_x = dwb * contact.qb_y;
-    float dvb_y = - dwb * contact.qb_x;
+    float dvb_x = - dwb * contact.qb_y;
+    float dvb_y = dwb * contact.qb_x;
 
     // Finally we're interested only in the previous change of velocity ALONG the
     // contact normal (because we want to see the effect of the unit impulse
@@ -851,6 +851,8 @@ void physic::dim2::solve_velocity(contact_data& contact){
     apply_impulse( *contact.rb_b, imp);
     
     contact.resolved_impulse_mag = imp.mag;
+
+    std::cout<< "Impulse Magnitude: " << imp.mag << std::endl << std::flush;
 
 }
 

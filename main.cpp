@@ -26,6 +26,7 @@ std::chrono::duration<float> delta_time;
 
 void DEBUG_naive_contact_detection_alg_physic();
 void DEBUG_naive_contact_detection_alg_rendering();
+void Debug_contact_solver_rendering();
 
 int main(void){
 
