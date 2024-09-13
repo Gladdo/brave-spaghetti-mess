@@ -94,6 +94,12 @@ void physic::dim2::numeric_integration(rigidbody& rb, float delta_time, float fo
 //
 void physic::dim2::apply_impulse(rigidbody& rb, impulse impulse){
 
+    mat4x4 model_matrix;
+    mat4x4 inv_model_matrix;
+
+    build_model_matrix(model_matrix, 0, 0, rb.angle);
+    mat4x4_invert(inv_model_matrix, model_matrix);
+
     // ------------------------------------------------------------------------------------
     // Velocity Update
     rb.vel_x = rb.vel_x + (1/rb.m) * impulse.d_x * impulse.mag;
@@ -101,12 +107,36 @@ void physic::dim2::apply_impulse(rigidbody& rb, impulse impulse){
 
     // ------------------------------------------------------------------------------------
     // Angular velocity update
+    float ms_n_x;
+    float ms_n_y;
+    float norm;
+    {
+        
+
+        vec4 ws_n = { impulse.d_x, impulse.d_y, 0.0, 0 };
+        vec4 ms_n;
+        mat4x4_mul_vec4(ms_n, inv_model_matrix, ws_n);
+        
+        vec2 normalizer = {ms_n[0], ms_n[1]};
+        norm = vec2_len( normalizer);
+        
+        ms_n_x = normalizer[0] / norm;
+        ms_n_y = normalizer[1] / norm;
+    }
 
     // Find the impulsive torque (q ∧ impulse)
-    float imp_torq_z = impulse.q_x * impulse.d_y * impulse.mag - impulse.q_y * impulse.d_x * impulse.mag;
+    float imp_torq_z = impulse.q_x * ms_n_y * impulse.mag - impulse.q_y * ms_n_x * impulse.mag;
     
     // Angular velocity update: from 𝜏 = Iw
     rb.w = rb.w + 1/rb.I * imp_torq_z;
+
+    std::cout << "======================================" << std::endl << std::flush;
+    std::cout << "IMPULSE DATA" << std::endl << std::flush;
+    std::cout << "application point q: " << impulse.q_x << ", " << impulse.q_y << std:: endl << std::flush;
+    std::cout << "impulse normal: " << impulse.d_x << ", " << impulse.d_y << std::endl << std::flush;
+    std::cout << "model space impulse normal: " << ms_n_x << ", " << ms_n_y << std::endl << std::flush;
+    std::cout << "model space impulse normal magnitude: " << norm << std::endl << std::flush;
+    std::cout << "imp_torq_z: " << imp_torq_z << std::endl << std::flush;
 
 }
 
@@ -385,8 +415,8 @@ physic::dim2::contact_data physic::dim2::generate_boxboxvertices_max_contactdata
         // keep track of the current vertex.
         if ( vertex_contact.pen > 0 && res_contact.pen < vertex_contact.pen ) {
             res_contact = vertex_contact;
-            res_contact.qa_x = A_collider_vertices[i][0];
-            res_contact.qa_y = A_collider_vertices[i][1];
+            res_contact.ms_qa_x = A_collider_vertices[i][0];
+            res_contact.ms_qa_y = A_collider_vertices[i][1];
             res_contact.rb_a = &A;
             res_contact.rb_b = &B;
         }
@@ -477,13 +507,13 @@ physic::dim2::contact_data physic::dim2::generate_pointbox_contactdata_naive_alg
         mat4x4_mul_vec4(ws_n_vec, model_matrix, ms_n_vec);
 
         // Setup the contact parameters
-        res_contact.n_x = ws_n_vec[0];
-        res_contact.n_y = ws_n_vec[1];
+        res_contact.ws_n_x = ws_n_vec[0];
+        res_contact.ws_n_y = ws_n_vec[1];
         res_contact.pen = shallpen;
         // res_contact.qa_x: this is setup in the calling function. 
         // res_contact.qa_y: this is setup in the calling function.
-        res_contact.qb_x = - coll.width/2;
-        res_contact.qb_y = point_y;
+        res_contact.ms_qb_x = - coll.width/2;
+        res_contact.ms_qb_y = point_y;
         // res_contact.rb_a: this is setup in the calling function.
         // res_contact.rb_b: this is setup in the calling function.
 
@@ -503,13 +533,13 @@ physic::dim2::contact_data physic::dim2::generate_pointbox_contactdata_naive_alg
         mat4x4_mul_vec4(ws_n_vec, model_matrix, ms_n_vec);
 
         // Setup the contact parameters
-        res_contact.n_x = ws_n_vec[0];
-        res_contact.n_y = ws_n_vec[1];
+        res_contact.ws_n_x = ws_n_vec[0];
+        res_contact.ws_n_y = ws_n_vec[1];
         res_contact.pen = shallpen;
         // res_contact.qa_x: this is setup in the calling function. 
         // res_contact.qa_y: this is setup in the calling function.
-        res_contact.qb_x = point_x;
-        res_contact.qb_y = coll.height/2;
+        res_contact.ms_qb_x = point_x;
+        res_contact.ms_qb_y = coll.height/2;
         // res_contact.rb_a: this is setup in the calling function.
         // res_contact.rb_b: this is setup in the calling function.
 
@@ -529,13 +559,13 @@ physic::dim2::contact_data physic::dim2::generate_pointbox_contactdata_naive_alg
         mat4x4_mul_vec4(ws_n_vec, model_matrix, ms_n_vec);
 
         // Setup the contact parameters
-        res_contact.n_x = ws_n_vec[0];
-        res_contact.n_y = ws_n_vec[1];
+        res_contact.ws_n_x = ws_n_vec[0];
+        res_contact.ws_n_y = ws_n_vec[1];
         res_contact.pen = shallpen;
         // res_contact.qa_x: this is setup in the calling function. 
         // res_contact.qa_y: this is setup in the calling function.
-        res_contact.qb_x = coll.width/2;
-        res_contact.qb_y = point_y;
+        res_contact.ms_qb_x = coll.width/2;
+        res_contact.ms_qb_y = point_y;
         // res_contact.rb_a: this is setup in the calling function.
         // res_contact.rb_b: this is setup in the calling function.
 
@@ -555,13 +585,13 @@ physic::dim2::contact_data physic::dim2::generate_pointbox_contactdata_naive_alg
         mat4x4_mul_vec4(ws_n_vec, model_matrix, ms_n_vec);
 
         // Setup the contact parameters
-        res_contact.n_x = ws_n_vec[0];
-        res_contact.n_y = ws_n_vec[1];
+        res_contact.ws_n_x = ws_n_vec[0];
+        res_contact.ws_n_y = ws_n_vec[1];
         res_contact.pen = shallpen;
         // res_contact.qa_x: this is setup in the calling function. 
         // res_contact.qa_y: this is setup in the calling function.
-        res_contact.qb_x = point_x;
-        res_contact.qb_y = - coll.height/2;
+        res_contact.ms_qb_x = point_x;
+        res_contact.ms_qb_y = - coll.height/2;
         // res_contact.rb_a: this is setup in the calling function.
         // res_contact.rb_b: this is setup in the calling function.
 
@@ -609,8 +639,15 @@ void physic::dim2::solve_velocity(contact_data& contact){
     mat4x4 model_matrix_A;
     mat4x4 model_matrix_B;
 
+    mat4x4 inverse_model_matrix_A;
+    mat4x4 inverse_model_matrix_B;
+    
+
     build_model_matrix(model_matrix_A, rbA.pos_x, rbA.pos_y, rbA.angle);
     build_model_matrix(model_matrix_B, rbB.pos_x, rbB.pos_y, rbB.angle);
+
+    mat4x4_invert(inverse_model_matrix_A, model_matrix_A);
+    mat4x4_invert(inverse_model_matrix_B, model_matrix_B);
 
     // ====================================================================================
     // Find the world velocity of the point q_a on rbA.
@@ -632,11 +669,11 @@ void physic::dim2::solve_velocity(contact_data& contact){
     //
     //  ○   local_v = rbA.w ∧ q_a
     //
-    float local_va_x = - rbA.w * contact.qa_y;
-    float local_va_y = rbA.w * contact.qa_x;
+    float local_va_x = - rbA.w * contact.ms_qa_y;
+    float local_va_y = rbA.w * contact.ms_qa_x;
 
     // Translate the previous velocity vector from model space to world space
-    vec4 local_rotation_va = { local_va_x, local_va_y, 0, 1};
+    vec4 local_rotation_va = { local_va_x, local_va_y, 0, 0};
     vec4 world_rotation_va;
     mat4x4_mul_vec4(world_rotation_va, model_matrix_B, local_rotation_va);
 
@@ -667,11 +704,11 @@ void physic::dim2::solve_velocity(contact_data& contact){
     //  ○   local_v = rbB.w ∧ q_b
     //
 
-    float local_vb_x = - rbB.w * contact.qb_y;
-    float local_vb_y = rbB.w * contact.qb_x;
+    float local_vb_x = - rbB.w * contact.ms_qb_y;
+    float local_vb_y = rbB.w * contact.ms_qb_x;
 
     // Translate the previous velocity vector from model space to world space
-    vec4 local_rotation_vb = { local_vb_x, local_vb_y, 0, 1};
+    vec4 local_rotation_vb = { local_vb_x, local_vb_y, 0, 0};
     vec4 world_rotation_vb;
     mat4x4_mul_vec4(world_rotation_vb, model_matrix_B, local_rotation_vb);
 
@@ -693,8 +730,8 @@ void physic::dim2::solve_velocity(contact_data& contact){
     //  ○   vb_n = vb ⋅ n
     //
 
-    float va_n = va_x*contact.n_x + va_y*contact.n_y;
-    float vb_n = vb_x*contact.n_x + vb_y*contact.n_y;
+    float va_n = va_x*contact.ws_n_x + va_y*contact.ws_n_y;
+    float vb_n = vb_x*contact.ws_n_x + vb_y*contact.ws_n_y;
 
     // ------------------------------------------------------------------------------------
     // Find the closing velocity: 
@@ -711,7 +748,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // ------------------------------------------------------------------------------------
     // Find the closing velocity after the collision
 
-    float vc_s = - 0.88 * vc;
+    float vc_s = - 0.88 * vc; 
 
     // ------------------------------------------------------------------------------------
     // Find the delta velocity:
@@ -720,7 +757,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // change in velocity)
     //
 
-    float actual_vc_change = abs(vc_s + vc);  
+    float actual_vc_change = abs(vc_s + vc);   
 
     // ====================================================================================
     // Determine the effect of a unit impulse on the contact points:
@@ -741,13 +778,251 @@ void physic::dim2::solve_velocity(contact_data& contact){
     //  ○   dv = |J| / mass = 1 / mass
     //
 
-    float dva_n = 1/rbA.m; 
-    float dvb_n = 1/rbB.m;                                        
+    float lin_dva_n = 1/rbA.m; 
+    float lin_dvb_n = 1/rbB.m;                                      
 
     // Total closing velocity change due to linear effect of unit impulse:
-    float linear_effect = dva_n + dvb_n;
+    float linear_effect = lin_dva_n + lin_dvb_n;
 
     // ------------------------------------------------------------------------------------
+    // NEW: Transform the normal of contact from world space to A model space
+
+    float ms_na_x;
+    float ms_na_y;
+
+    {   
+        vec4 ws_n = { contact.ws_n_x, contact.ws_n_y, 0.0, 0};
+        vec4 ms_n;
+        mat4x4_mul_vec4(ms_n, inverse_model_matrix_A, ws_n);
+
+        vec2 normalizer = {ms_n[0], ms_n[1]};
+        float norm = vec2_len( normalizer);
+        
+        
+        ms_na_x = normalizer[0] / norm;
+        ms_na_y = normalizer[1] / norm;
+
+        std::cout << " ================================  " << std::endl << std::flush;
+        std::cout << " TRANSFORMING NORMAL: " << std::endl << std::flush;
+        std::cout << "ws normal: " << contact.ws_n_x << ", " << contact.ws_n_y << std::endl << std::flush;
+        std::cout << "normalizer: " << normalizer[0] << ", " << normalizer[1] << std::endl << std::flush;
+        std::cout << "norm: " << norm << std::endl << std::flush;
+        std::cout << "ms_nb_x: " << ms_na_x << std::endl << std::flush;
+        std::cout << "ms_nb_y: " << ms_na_y << std::endl << std::flush;
+    }
+
+    // ------------------------------------------------------------------------------------
+    // Unit impulse effect on angular velocity:
+    // Now we find the linear velocity change of qa due to angular effect of unit impulse:
+
+    // We first find the impulsive torque of a unit impulse:
+    // 
+    //  ○   u = q ∧ J
+    //
+    // In this case J = (n_x, n_y), hence we have:
+
+    float ua = contact.ms_qa_x * ms_na_y - contact.ms_qa_y * ms_na_x ;
+    
+    // We then find the change in angular velocity with: (from 𝜏 = F ∧ r = Iα )
+    //
+    //  ○   dw = u / I
+    //
+
+    float dwa = 1/rbA.I * ua;
+    
+    // We then find the change in linear velocity produced by the previous change in 
+    // angular velocity:
+    //
+    //  ○   dv = dw ∧ q
+    //
+
+    float dva_x = - dwa * contact.ms_qa_y;
+    float dva_y = dwa * contact.ms_qa_x;
+
+    // Finally we're interested only in the previous change of velocity ALONG the
+    // contact normal (because we want to see the effect of the unit impulse
+    // on the velocity along that normal )
+
+    float ang_dva_n = dva_x * ms_na_x + dva_y * ms_na_y;
+
+    // ------------------------------------------------------------------------------------
+    // NEW: Transform the normal of contact from world space to B model space
+
+    float ms_nb_x;
+    float ms_nb_y;
+
+    {       
+        vec4 ws_n = { -contact.ws_n_x, -contact.ws_n_y, 0.0, 0 };
+        vec4 ms_n;
+        mat4x4_mul_vec4(ms_n, inverse_model_matrix_B, ws_n);
+        
+        vec2 normalizer = {ms_n[0], ms_n[1]};
+        float norm = vec2_len( normalizer);
+        
+        ms_nb_x = normalizer[0] / norm;
+        ms_nb_y = normalizer[1] / norm;
+
+        std::cout << " ================================  " << std::endl << std::flush;
+        std::cout << " TRANSFORMING NORMAL: " << std::endl << std::flush;
+        std::cout << "ws normal: " << contact.ws_n_x << ", " << contact.ws_n_y << std::endl << std::flush;
+        std::cout << "normalizer: " << normalizer[0] << ", " << normalizer[1] << std::endl << std::flush;
+        std::cout << "norm: " << norm << std::endl << std::flush;
+        std::cout << "ms_nb_x: " << ms_nb_x << std::endl << std::flush;
+        std::cout << "ms_nb_y: " << ms_nb_y << std::endl << std::flush;
+    }
+    
+    // ------------------------------------------------------------------------------------
+    // Unit impulse effect on angular velocity:
+    // Now we find the linear velocity change of qb due to angular effect of unit impulse:
+
+    // We first find the impulsive torque of a unit impulse:
+    // 
+    //  ○   u = q ∧ J
+    //
+    // In this case J = (n_x, n_y), hence we have:
+
+    float ub = contact.ms_qb_x * ms_nb_y - contact.ms_qb_y * ms_nb_x;
+
+    // We then find the change in angular velocity with: (from 𝜏 = F ∧ r = Iα )
+    //
+    //  ○   dw = u / I
+    //
+
+    float dwb = 1/rbB.I * ub;
+
+    // We then find the change in linear velocity produced by the previous change in 
+    // angular velocity:
+    //
+    //  ○   dv = dw ∧ q
+    //
+
+    float dvb_x = - dwb * ms_nb_y;
+    float dvb_y = dwb * ms_nb_x;
+
+    // Finally we're interested only in the previous change of velocity ALONG the
+    // contact normal (because we want to see the effect of the unit impulse
+    // on the velocity along that normal )
+
+    float ang_dvb_n = dvb_x * ms_nb_x + dvb_y * ms_nb_y;    
+
+    // ------------------------------------------------------------------------------------
+    // Total closing velocity change due to angular effect of unit impulse:
+    float angular_effect = ang_dva_n + ang_dvb_n;
+
+    // ====================================================================================
+
+    // Total closing velocity change: With respect to the model of this contact, a unit 
+    // impulse on the contact point produces a change on the closing velocity equals to: 
+
+    float vc_change_per_imp_unit = linear_effect + angular_effect;
+
+    // Hence, the impulse that produced the actual change in closing velocity must have
+    // a magnitude equal to:
+    
+    float imp_mag = actual_vc_change / vc_change_per_imp_unit;
+
+    // ====================================================================================        
+    // Apply the impulse
+
+    impulse imp;
+    imp.mag = imp_mag;
+
+    imp.d_x = contact.ws_n_x;
+    imp.d_y = contact.ws_n_y;
+    imp.q_x = contact.ms_qa_x;
+    imp.q_y = contact.ms_qa_y;
+
+    apply_impulse( *contact.rb_a, imp);
+
+    imp.d_x = - contact.ws_n_x;
+    imp.d_y = - contact.ws_n_y;
+    imp.q_x = contact.ms_qb_x;
+    imp.q_y = contact.ms_qb_y;
+
+    apply_impulse( *contact.rb_b, imp);
+    
+    contact.resolved_impulse_mag = imp.mag;
+
+    std::cout << "=====================================================" << std::endl << std::flush;
+    std::cout << "VELOCITY SOLVER DATA: " << std::endl << std::flush;
+    std::cout << "local_va_x: " << local_va_x << std::endl << std::flush;
+    std::cout << "local_va_y: " << local_va_y << std::endl << std::flush;
+    std::cout << "va_x: " << va_x << std::endl << std::flush;
+    std::cout << "va_y: " << va_y << std::endl << std::flush;
+    std::cout << "local_vb_x: " << local_vb_x << std::endl << std::flush;
+    std::cout << "local_vb_y: " << local_vb_y << std::endl << std::flush;
+    std::cout << "vb_x: " << vb_x << std::endl << std::flush;
+    std::cout << "vb_y: " << vb_y << std::endl << std::flush;
+    std::cout << "va_n: " << va_n << std::endl << std::flush;
+    std::cout << "vb_n: " << vb_n << std::endl << std::flush;
+    std::cout << "vc: " << vc << std::endl << std::flush;
+    std::cout << "vc_s: " << vc_s << std::endl << std::flush;
+    std::cout << "actual_vc_change: " << actual_vc_change << std::endl << std::flush;
+    std::cout << "lin_dva_n: " << lin_dva_n << std::endl << std::flush;
+    std::cout << "lin_dvb_n: " << lin_dvb_n << std::endl << std::flush;
+    std::cout << "linear_effect: " << linear_effect << std::endl << std::flush;
+    std::cout << "ua: " << ua << std::endl << std::flush;
+    std::cout << "dwa: " << dwa << std::endl << std::flush;
+    std::cout << "dva_x: " << dva_x << std::endl << std::flush;
+    std::cout << "dva_y: " << dva_y << std::endl << std::flush;
+    std::cout << "ang_dva_n: " << ang_dva_n << std::endl << std::flush;
+    std::cout << "ub: " << ub << std::endl << std::flush;
+    std::cout << "dwb: " << dwb << std::endl << std::flush;
+    std::cout << "dvb_x: " << dvb_x << std::endl << std::flush;
+    std::cout << "dvb_y: " << dvb_y << std::endl << std::flush;
+    std::cout << "ang_dvb_n: " << ang_dvb_n << std::endl << std::flush;
+    std::cout << "angular_effect: " << angular_effect << std::endl << std::flush;
+    std::cout << "vc_change_per_imp_unit: " << vc_change_per_imp_unit << std::endl << std::flush;
+    std::cout<< "Impulse Magnitude: " << imp.mag << std::endl << std::flush;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                        CONTACT SOLVER: Interpenetration solver
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Risolve le interpenetrazioni presenti alla registrazione del contatto
+//
+
+void physic::dim2::solve_interpenetration(contact_data& contact){
+
+    // With this configuration, rbA contact happen on a vertex while rbB contact
+    // happen on a surface. Hence the normal of contact specify the normal surface of B
+    rigidbody& rbA = *(contact.rb_a);
+    rigidbody& rbB = *(contact.rb_b);
+    
+    float disp_x = contact.pen * contact.ws_n_x *0.5f;
+    float disp_y = contact.pen * contact.ws_n_y *0.5f;
+
+    rbA.pos_x += disp_x;
+    rbA.pos_y += disp_y;
+    rbB.pos_x -= disp_x;
+    rbB.pos_y -= disp_y;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* // ------------------------------------------------------------------------------------
     // Unit impulse effect on angular velocity:
     // Now we find the linear velocity change of qa due to angular effect of unit impulse:
 
@@ -813,7 +1088,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // contact normal (because we want to see the effect of the unit impulse
     // on the velocity along that normal )
 
-    dvb_n = dvb_x * contact.n_x + dvb_y * contact.n_y;        
+    dvb_n = dvb_x * contact.n_x + dvb_y * contact.n_y;    
 
     // ------------------------------------------------------------------------------------
     // Total closing velocity change due to angular effect of unit impulse:
@@ -824,8 +1099,8 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // Total closing velocity change: With respect to the model of this contact, a unit 
     // impulse on the contact point produces a change on the closing velocity equals to: 
 
-    float vc_change_per_imp_unit = linear_effect+angular_effect;
-    
+    float vc_change_per_imp_unit = linear_effect + angular_effect;
+
     // Hence, the impulse that produced the actual change in closing velocity must have
     // a magnitude equal to:
     
@@ -835,49 +1110,67 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // Apply the impulse
 
     impulse imp;
+    imp.mag = imp_mag;
+
     imp.d_x = contact.n_x;
     imp.d_y = contact.n_y;
-    imp.mag = imp_mag;
     imp.q_x = contact.qa_x;
     imp.q_y = contact.qa_y;
 
     apply_impulse( *contact.rb_a, imp);
 
-    imp.d_x = - imp.d_x;
-    imp.d_y = - imp.d_y;
+    imp.d_x = - contact.n_x;
+    imp.d_y = - contact.n_y;
     imp.q_x = contact.qb_x;
     imp.q_y = contact.qb_y;
 
     apply_impulse( *contact.rb_b, imp);
     
-    contact.resolved_impulse_mag = imp.mag;
+    contact.resolved_impulse_mag = imp.mag; */
 
-    std::cout<< "Impulse Magnitude: " << imp.mag << std::endl << std::flush;
 
-}
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                        CONTACT SOLVER: Interpenetration solver
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Risolve le interpenetrazioni presenti alla registrazione del contatto
-//
 
-void physic::dim2::solve_interpenetration(contact_data& contact){
 
-    // With this configuration, rbA contact happen on a vertex while rbB contact
-    // happen on a surface. Hence the normal of contact specify the normal surface of B
-    rigidbody& rbA = *(contact.rb_a);
-    rigidbody& rbB = *(contact.rb_b);
-    
-    float disp_x = contact.pen * contact.n_x *0.5f;
-    float disp_y = contact.pen * contact.n_y *0.5f;
 
-    rbA.pos_x += disp_x;
-    rbA.pos_y += disp_y;
-    rbB.pos_x -= disp_x;
-    rbB.pos_y -= disp_y;
 
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV         OLD CODE         VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV //   
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 void physic::solve_2dbox_contacts_velocities(){
@@ -1045,17 +1338,8 @@ void physic::solve_2dbox_contacts_interpenetration_linear_proj(){
 
     }
 
-} */
+} 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV         OLD CODE         VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV //   
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/* 
 void physic::generate_2dbox_contacts_data(std::vector<box_rigidbody_2d>& boxes){
 
     // Check for box-box collisions

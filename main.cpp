@@ -26,7 +26,7 @@ std::chrono::duration<float> delta_time;
 
 void DEBUG_naive_contact_detection_alg_physic();
 void DEBUG_naive_contact_detection_alg_rendering();
-void Debug_contact_solver_rendering();
+void DEBUG_contact_solver_rendering();
 
 int main(void){
 
@@ -95,6 +95,10 @@ int main(void){
     rendering::camera.world_near_clip = 0;
     rendering::camera.world_far_clip = 20;
 
+    // ====================================================================================
+    // Initialize Rendering Camera properties
+    bool simulation_run = true;
+
     while (!glfwWindowShouldClose(window))
     { 
 
@@ -109,6 +113,16 @@ int main(void){
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         inputs::update();
+
+        if( inputs::simulation_run_toggle_button == inputs::PRESS ){
+            if(simulation_run == true){
+                simulation_run = false;
+                std::cout << "Simulation run false" << std::endl << std::flush;
+            }else{
+                simulation_run = true;
+                std::cout << "Simulation run true" << std::endl << std::flush;
+            }
+        }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                           MANAGE MOUSE USER CLICK
@@ -161,23 +175,31 @@ int main(void){
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Update all rigidbodies data inside "world_rigidbodies_2d_box"
 
-        for( int i = 0; i < game_data::ARRAY_SIZE; i++ ) {
-            if ( !game_data::world_rigidbodies_2d_box[i].free )
-                physic::dim2::numeric_integration(game_data::world_rigidbodies_2d_box[i].rb, delta_time.count(), 0, 0, 0);
+        if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run){
+            for( int i = 0; i < game_data::ARRAY_SIZE; i++ ) {
+                if ( !game_data::world_rigidbodies_2d_box[i].free )
+                    physic::dim2::numeric_integration(game_data::world_rigidbodies_2d_box[i].rb, delta_time.count(), 0, 0, 0);
+            }
         }
+
+
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                        COLLISION DETECTION: PHYSIC
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        // Populate physic::dim2::contacts vector with collision between game world colliders
-        DEBUG_naive_contact_detection_alg_physic();
+        if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run){
+            // Populate physic::dim2::contacts vector with collision between game world colliders
+            DEBUG_naive_contact_detection_alg_physic();
+        }
+
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                         COLLISION SOLVER: PHYSIC
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        physic::dim2::contact_solver_dispatcher();
+        if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run)
+            physic::dim2::contact_solver_dispatcher();
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                      UPDATE GAME OBJECTS TRANSFORMS
@@ -341,158 +363,11 @@ int main(void){
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                      COLLISION SOLVER: RENDERING 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        for( int i = 0; i < physic::dim2::contacts.size(); i++ ){
-            
-            physic::dim2::contact_data& contact = physic::dim2::contacts[i];
-
-            game_data::contact_circle_animations.push_back({});
-            int last_element = game_data::contact_circle_animations.size()-1;
-
-            // Find QB world contact coordinates
-            mat4x4 model_matrix;
-            physic::dim2::build_model_matrix(model_matrix, contact.rb_b->pos_x, contact.rb_b->pos_y, contact.rb_b->angle );
-            vec4 world_qb;
-            vec4 local_qb= {contact.qb_x, contact.qb_y, 0, 1};
-            mat4x4_mul_vec4(world_qb, model_matrix, local_qb);
-
-            game_data::contact_circle_animations[last_element].world_x = world_qb[0];
-            game_data::contact_circle_animations[last_element].world_y = world_qb[1];
-
-            game_data::contact_circle_animations[last_element].impulse_axis_x = contact.n_x;
-            game_data::contact_circle_animations[last_element].impulse_axis_y = contact.n_y;
-
+        
+        if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run){
+            DEBUG_contact_solver_rendering();
         }
         
-        glUseProgram(rendering::debug_circle_shader::program_id);
-        glBindVertexArray(rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
-
-        for( int i = 0 ; i < game_data::contact_circle_animations.size(); i ++ ){
-
-            game_data::contact_circle_animation& c_anim = game_data::contact_circle_animations[i];
-
-            if(c_anim.size >= c_anim.max_size){
-                game_data::contact_circle_animations.erase( game_data::contact_circle_animations.begin() + i );
-                i--;
-                continue;
-            }
-
-            rendering::calculate_mvp(
-                mvp, 
-                1, 
-                1, 
-                c_anim.world_x, 
-                c_anim.world_y, 
-                0
-            );
-
-            rendering::debug_circle_shader::set_uniform_mvp(mvp);
-            rendering::debug_circle_shader::set_uniform_radius(c_anim.size);
-            rendering::debug_circle_shader::set_uniform_impulse_axis(c_anim.impulse_axis_x, c_anim.impulse_axis_y);
-            rendering::debug_circle_shader::set_uniform_circle_width(0.1f);
-
-            c_anim.size = c_anim.size + delta_time.count() * c_anim.size_setp * 10 ; 
-
-            glDrawArrays(GL_TRIANGLES, 0, rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_number);
-
-            // Draw second wave
-            rendering::debug_circle_shader::set_uniform_radius(c_anim.size-0.8);
-
-            glDrawArrays(GL_TRIANGLES, 0, rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_number);
-
-        }
-        
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                                  RENDERING
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*      // ====================================================================================
-        //                                  Render Starting Impulses
-        // ====================================================================================
-        // Setup rendering to render starting impulses
-
-        if(!game_data::is_simulation_running){
-            glUseProgram(rendering::debug_line_shader::program_id);
-            glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
-
-            rendering::debug_line_shader::set_arrow_stripe_width(0.1);
-            rendering::debug_line_shader::set_arrow_stripe_tip_size(0.2, 0.2);
-
-            if(game_data::starting_impulses.size() != 0){
-                
-                for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
-
-                    // If impulses exist for the i-esimo rigid body, then render it
-                    if(game_data::starting_impulses.find(i)!= game_data::starting_impulses.end()){
-                        
-                        // Get the rb
-                        physic::rigidbody_2d& rb = game_data::box_rigidbodies.at(i);
-
-                        // Get the impulse
-                        physic::impulse imp = game_data::starting_impulses.at(i);
-
-                        rendering::debug_line_shader::set_arrow_stripe_length(imp.mag);
-                        
-                        float x = imp.q_x + rb.x;
-                        float y = imp.q_y + rb.y;
-                        float rad_angle = std::atan2(imp.d_y, imp.d_x);
-
-                        rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
-
-                    }
-
-                }
-            }
-            
-        }
-
-        // ====================================================================================
-        //                                  Render Contact Impulses
-        // ====================================================================================
-        // Setup rendering to render starting impulses
-
-        glUseProgram(rendering::debug_line_shader::program_id);
-        glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
-
-        rendering::debug_line_shader::set_arrow_stripe_width(0.1);
-        rendering::debug_line_shader::set_arrow_stripe_tip_size(0.2, 0.2);
-
-        for(int i = 0; i < physic::box_contacts.size(); i ++){
-            physic::contact_data& contact = physic::box_contacts[i];
-
-            rendering::debug_line_shader::set_arrow_stripe_length(contact.resolved_impulse_mag);
-
-            mat4x4 mm;
-            vec4 local_q;
-            vec4 world_q;
-
-            local_q[0] = contact.qa_x;
-            local_q[1] = contact.qa_y;
-            local_q[2]=0;
-            local_q[3]=1;
-
-            physic::build_2d_model_matrix(mm, contact.rb_a->x, contact.rb_a->y, contact.rb_a->an);
-            mat4x4_mul_vec4(world_q, mm, local_q);
-
-            float x = world_q[0];
-            float y = world_q[1];
-            float rad_angle = std::atan2(contact.n_y, contact.n_x);
-
-            rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
-            
-            local_q[0] = contact.qb_x;
-            local_q[1] = contact.qb_y;
-            local_q[2] = 0;
-            local_q[3] = 1;
-
-            physic::build_2d_model_matrix(mm, contact.rb_b->x, contact.rb_b->y, contact.rb_b->an);
-            mat4x4_mul_vec4(world_q, mm, local_q);
-
-            x = world_q[0];
-            y = world_q[1];
-            rad_angle = std::atan2(-contact.n_y, -contact.n_x);
-
-            rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
-        } */
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                       RELEASE GAME SCENE FRAMEBUFFER
@@ -626,13 +501,13 @@ void DEBUG_naive_contact_detection_alg_rendering(){
         mat4x4 model_matrix;
         physic::dim2::build_model_matrix(model_matrix, contact.rb_a->pos_x, contact.rb_a->pos_y, contact.rb_a->angle );
         vec4 world_qa;
-        vec4 local_qa = {contact.qa_x, contact.qa_y, 0, 1};
+        vec4 local_qa = {contact.ms_qa_x, contact.ms_qa_y, 0, 1};
         mat4x4_mul_vec4(world_qa, model_matrix, local_qa);
 
         // Find QB world contact coordinates
         physic::dim2::build_model_matrix(model_matrix, contact.rb_b->pos_x, contact.rb_b->pos_y, contact.rb_b->angle );
         vec4 world_qb;
-        vec4 local_qb= {contact.qb_x, contact.qb_y, 0, 1};
+        vec4 local_qb= {contact.ms_qb_x, contact.ms_qb_y, 0, 1};
         mat4x4_mul_vec4(world_qb, model_matrix, local_qb);
 
         // Render QA
@@ -646,17 +521,244 @@ void DEBUG_naive_contact_detection_alg_rendering(){
             world_qb[0],
             world_qb[1],
             0,
-            {0, 0, contact.n_x, contact.n_y}
+            {0, 0, contact.ws_n_x, contact.ws_n_y}
         );
     
     }
 
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                            CONTACT RESPONSE DEBUG
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// =========================================================================|
+//                               Rendering update
+// =========================================================================|
+// Renders visually the impulses caused by a contact 
+//
+
+void DEBUG_contact_solver_rendering(){
+
+    for( int i = 0; i < physic::dim2::contacts.size(); i++ ){
+        
+        physic::dim2::contact_data& contact = physic::dim2::contacts[i];
+
+        game_data::contact_circle_animations.push_back({});
+        int last_element = game_data::contact_circle_animations.size()-1;
+
+        // Find QB world contact coordinates
+        mat4x4 model_matrix;
+        physic::dim2::build_model_matrix(model_matrix, contact.rb_b->pos_x, contact.rb_b->pos_y, contact.rb_b->angle );
+        vec4 world_qb;
+        vec4 local_qb= {contact.ms_qb_x, contact.ms_qb_y, 0, 1};
+        mat4x4_mul_vec4(world_qb, model_matrix, local_qb);
+
+        game_data::contact_circle_animations[last_element].world_x = world_qb[0];
+        game_data::contact_circle_animations[last_element].world_y = world_qb[1];
+
+        game_data::contact_circle_animations[last_element].impulse_axis_x = contact.ws_n_x;
+        game_data::contact_circle_animations[last_element].impulse_axis_y = contact.ws_n_y;
+
+    }
+    
+    glUseProgram(rendering::debug_circle_shader::program_id);
+    glBindVertexArray(rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
+
+    for( int i = 0 ; i < game_data::contact_circle_animations.size(); i ++ ){
+
+        game_data::contact_circle_animation& c_anim = game_data::contact_circle_animations[i];
+
+        if(c_anim.size >= c_anim.max_size){
+            game_data::contact_circle_animations.erase( game_data::contact_circle_animations.begin() + i );
+            i--;
+            continue;
+        }
+
+        float mvp [16];
+
+        rendering::calculate_mvp(
+            mvp, 
+            1, 
+            1, 
+            c_anim.world_x, 
+            c_anim.world_y, 
+            0
+        );
+
+        rendering::debug_circle_shader::set_uniform_mvp(mvp);
+        rendering::debug_circle_shader::set_uniform_radius(c_anim.size);
+        rendering::debug_circle_shader::set_uniform_impulse_axis(c_anim.impulse_axis_x, c_anim.impulse_axis_y);
+        rendering::debug_circle_shader::set_uniform_circle_width(0.1f);
+
+        c_anim.size = c_anim.size + delta_time.count() * c_anim.size_setp * 10 ; 
+
+        glDrawArrays(GL_TRIANGLES, 0, rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_number);
+
+        // Draw second wave
+        rendering::debug_circle_shader::set_uniform_radius(c_anim.size-0.8);
+
+        glDrawArrays(GL_TRIANGLES, 0, rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_number);
+
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                 OLD CODE
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*      // ====================================================================================
+    //                                  Render Starting Impulses
+    // ====================================================================================
+    // Setup rendering to render starting impulses
+
+    if(!game_data::is_simulation_running){
+        glUseProgram(rendering::debug_line_shader::program_id);
+        glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+
+        rendering::debug_line_shader::set_arrow_stripe_width(0.1);
+        rendering::debug_line_shader::set_arrow_stripe_tip_size(0.2, 0.2);
+
+        if(game_data::starting_impulses.size() != 0){
+            
+            for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
+
+                // If impulses exist for the i-esimo rigid body, then render it
+                if(game_data::starting_impulses.find(i)!= game_data::starting_impulses.end()){
+                    
+                    // Get the rb
+                    physic::rigidbody_2d& rb = game_data::box_rigidbodies.at(i);
+
+                    // Get the impulse
+                    physic::impulse imp = game_data::starting_impulses.at(i);
+
+                    rendering::debug_line_shader::set_arrow_stripe_length(imp.mag);
+                    
+                    float x = imp.q_x + rb.x;
+                    float y = imp.q_y + rb.y;
+                    float rad_angle = std::atan2(imp.d_y, imp.d_x);
+
+                    rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
+
+                }
+
+            }
+        }
+        
+    }
+
+    // ====================================================================================
+    //                                  Render Contact Impulses
+    // ====================================================================================
+    // Setup rendering to render starting impulses
+
+    glUseProgram(rendering::debug_line_shader::program_id);
+    glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+
+    rendering::debug_line_shader::set_arrow_stripe_width(0.1);
+    rendering::debug_line_shader::set_arrow_stripe_tip_size(0.2, 0.2);
+
+    for(int i = 0; i < physic::box_contacts.size(); i ++){
+        physic::contact_data& contact = physic::box_contacts[i];
+
+        rendering::debug_line_shader::set_arrow_stripe_length(contact.resolved_impulse_mag);
+
+        mat4x4 mm;
+        vec4 local_q;
+        vec4 world_q;
+
+        local_q[0] = contact.qa_x;
+        local_q[1] = contact.qa_y;
+        local_q[2]=0;
+        local_q[3]=1;
+
+        physic::build_2d_model_matrix(mm, contact.rb_a->x, contact.rb_a->y, contact.rb_a->an);
+        mat4x4_mul_vec4(world_q, mm, local_q);
+
+        float x = world_q[0];
+        float y = world_q[1];
+        float rad_angle = std::atan2(contact.n_y, contact.n_x);
+
+        rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
+        
+        local_q[0] = contact.qb_x;
+        local_q[1] = contact.qb_y;
+        local_q[2] = 0;
+        local_q[3] = 1;
+
+        physic::build_2d_model_matrix(mm, contact.rb_b->x, contact.rb_b->y, contact.rb_b->an);
+        mat4x4_mul_vec4(world_q, mm, local_q);
+
+        x = world_q[0];
+        y = world_q[1];
+        rad_angle = std::atan2(-contact.n_y, -contact.n_x);
+
+        rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
+    } 
+
 
 void DEBUG_contact_response_physic_step(){
     
@@ -671,7 +773,7 @@ void DEBUG_contact_response_physic_step(){
         // ====================================================================================
         // Manage starting impulses
 
-        /* if(game_data::starting_impulses.size() != 0){
+        if(game_data::starting_impulses.size() != 0){
             
             // Apply starting impulses
             for( int i = 0; i < game_data::box_rigidbodies.size(); i++ ) {
@@ -683,7 +785,7 @@ void DEBUG_contact_response_physic_step(){
                 }
 
             }
-        } */
+        } 
 
         // ====================================================================================
         // Check for collisions and generate collision data
@@ -708,7 +810,7 @@ void DEBUG_contact_response_physic_step(){
         // Solve collisions by generating impulses
 
         /* physic::solve_2dbox_contacts_interpenetration_linear_proj();
-        physic::solve_2dbox_contacts_velocities(); */   
+        physic::solve_2dbox_contacts_velocities();  
         
     }
-}
+} */

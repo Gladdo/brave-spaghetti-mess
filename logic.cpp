@@ -18,7 +18,8 @@ extern GLFWwindow* window;
 inputs::pixel_position inputs::mouse_cursor_position;
 inputs::multi_coord_position inputs::mouse_last_click;
 inputs::button_state inputs::mouse_left_button = inputs::IDLE;
-inputs::button_state inputs::simulation_step_forward_button = inputs::IDLE;
+inputs::button_state inputs::simulation_run_frame_button = inputs::IDLE;
+inputs::button_state inputs::simulation_run_toggle_button = inputs::IDLE;
 
 bool inputs::check_if_click_is_on_scene(){
 
@@ -96,22 +97,22 @@ void inputs::update(){
     // Update Mouse Data 
 
     // Get mouse left button raw state
-    int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+    int mb_state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
 
     // Establish the logic state of the button
     if( mouse_left_button == RELEASE){
         mouse_left_button = IDLE;
     }
 
-    if(mouse_left_button == PRESS && state == GLFW_PRESS){
+    if(mouse_left_button == PRESS && mb_state == GLFW_PRESS){
         mouse_left_button = HOLD;
     }
 
-    if( mouse_left_button == IDLE && state == GLFW_PRESS){
+    if( mouse_left_button == IDLE && mb_state == GLFW_PRESS){
         mouse_left_button = PRESS;
     }
 
-    if( (mouse_left_button == PRESS || mouse_left_button == HOLD) && state == GLFW_RELEASE){
+    if( (mouse_left_button == PRESS || mouse_left_button == HOLD) && mb_state == GLFW_RELEASE){
         mouse_left_button = RELEASE;
     }
 
@@ -160,13 +161,46 @@ void inputs::update(){
     } */
 
     ///////////////////////////////////////////////////////////////////////////////////////
-    // Get step button
+    // Run frame button
 
-    state = glfwGetKey(window, GLFW_KEY_P);
-    
-    simulation_step_forward_button = IDLE;
-    if (state == GLFW_PRESS){
-        simulation_step_forward_button = PRESS;
+    int pb_state = glfwGetKey(window, GLFW_KEY_P);
+
+    if( simulation_run_frame_button == RELEASE){
+        simulation_run_frame_button = IDLE;
     }
+
+    if ( simulation_run_frame_button == PRESS && pb_state == GLFW_PRESS){
+        simulation_run_frame_button = HOLD;
+    }
+
+    if ( simulation_run_frame_button == IDLE && pb_state == GLFW_PRESS){
+        simulation_run_frame_button = PRESS;
+    }
+
+    if( (simulation_run_frame_button == PRESS || simulation_run_frame_button == HOLD) && pb_state == GLFW_RELEASE){
+        simulation_run_frame_button = RELEASE;
+    } 
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    // Run toggle button
+
+    int ob_state = glfwGetKey(window, GLFW_KEY_O);
+
+    if( simulation_run_toggle_button == RELEASE){
+        simulation_run_toggle_button = IDLE;
+    }
+
+    if ( simulation_run_toggle_button == PRESS && ob_state == GLFW_PRESS){
+        simulation_run_toggle_button = HOLD;
+    }
+
+    if ( simulation_run_toggle_button == IDLE && ob_state == GLFW_PRESS){
+        simulation_run_toggle_button = PRESS;
+    }
+
+    if( (simulation_run_toggle_button == PRESS || simulation_run_toggle_button == HOLD) && ob_state == GLFW_RELEASE){
+        simulation_run_toggle_button = RELEASE; 
+    } 
+
     
 }

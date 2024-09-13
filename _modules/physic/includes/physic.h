@@ -100,9 +100,9 @@ namespace physic{
             rigidbody* rb_a;
             rigidbody* rb_b;
             
-            float qa_x, qa_y;                                       // q_a: contact point on rigid body A, relative to rigid body A position
-            float qb_x, qb_y;                                       // q_b: contact point on rigid body B, relative to rigid body B position
-            float n_x, n_y;                                         // n: contact normal
+            float ms_qa_x, ms_qa_y;                                       // q_a: contact point on rigid body A, relative to rigid body A position
+            float ms_qb_x, ms_qb_y;                                       // q_b: contact point on rigid body B, relative to rigid body B position
+            float ws_n_x, ws_n_y;                                         // n: contact normal
             float pen;                                              // pen: contact penetration
 
             float resolved_impulse_mag;                             // magnitude of the impulse that solve the contact; used for rendering purposes
