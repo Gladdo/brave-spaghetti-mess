@@ -358,14 +358,14 @@ int main(void){
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Renders data inside physic::dim2::contacts vector
         
-        DEBUG_naive_contact_detection_alg_rendering();        
+        //DEBUG_naive_contact_detection_alg_rendering();        
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                      COLLISION SOLVER: RENDERING 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
         if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run){
-            DEBUG_contact_solver_rendering();
+            //DEBUG_contact_solver_rendering();
         }
         
 
