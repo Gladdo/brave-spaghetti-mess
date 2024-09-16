@@ -131,13 +131,14 @@ void physic::dim2::apply_impulse(rigidbody& rb, impulse impulse){
     // Angular velocity update: from 𝜏 = Iw
     rb.w = rb.w + 1/rb.I * imp_torq_z;
 
-    std::cout << "======================================" << std::endl << std::flush;
+    /*std::cout << "======================================" << std::endl << std::flush;
     std::cout << "IMPULSE DATA" << std::endl << std::flush;
     std::cout << "application point q: " << impulse.q_x << ", " << impulse.q_y << std:: endl << std::flush;
     std::cout << "impulse normal: " << impulse.d_x << ", " << impulse.d_y << std::endl << std::flush;
     std::cout << "model space impulse normal: " << ms_n_x << ", " << ms_n_y << std::endl << std::flush;
     std::cout << "model space impulse normal magnitude: " << norm << std::endl << std::flush;
     std::cout << "imp_torq_z: " << imp_torq_z << std::endl << std::flush;
+    */
 
 }
 
@@ -802,13 +803,13 @@ void physic::dim2::solve_velocity(contact_data& contact){
         ms_na_x = normalizer[0] / norm;
         ms_na_y = normalizer[1] / norm;
 
-        std::cout << " ================================  " << std::endl << std::flush;
+        /* std::cout << " ================================  " << std::endl << std::flush;
         std::cout << " TRANSFORMING NORMAL: " << std::endl << std::flush;
         std::cout << "ws normal: " << contact.ws_n_x << ", " << contact.ws_n_y << std::endl << std::flush;
         std::cout << "normalizer: " << normalizer[0] << ", " << normalizer[1] << std::endl << std::flush;
         std::cout << "norm: " << norm << std::endl << std::flush;
         std::cout << "ms_nb_x: " << ms_na_x << std::endl << std::flush;
-        std::cout << "ms_nb_y: " << ms_na_y << std::endl << std::flush;
+        std::cout << "ms_nb_y: " << ms_na_y << std::endl << std::flush; */
     }
 
     // ------------------------------------------------------------------------------------
@@ -862,13 +863,13 @@ void physic::dim2::solve_velocity(contact_data& contact){
         ms_nb_x = normalizer[0] / norm;
         ms_nb_y = normalizer[1] / norm;
 
-        std::cout << " ================================  " << std::endl << std::flush;
+        /* std::cout << " ================================  " << std::endl << std::flush;
         std::cout << " TRANSFORMING NORMAL: " << std::endl << std::flush;
         std::cout << "ws normal: " << contact.ws_n_x << ", " << contact.ws_n_y << std::endl << std::flush;
         std::cout << "normalizer: " << normalizer[0] << ", " << normalizer[1] << std::endl << std::flush;
         std::cout << "norm: " << norm << std::endl << std::flush;
         std::cout << "ms_nb_x: " << ms_nb_x << std::endl << std::flush;
-        std::cout << "ms_nb_y: " << ms_nb_y << std::endl << std::flush;
+        std::cout << "ms_nb_y: " << ms_nb_y << std::endl << std::flush; */
     }
     
     // ------------------------------------------------------------------------------------
@@ -943,7 +944,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     
     contact.resolved_impulse_mag = imp.mag;
 
-    std::cout << "=====================================================" << std::endl << std::flush;
+    /* std::cout << "=====================================================" << std::endl << std::flush;
     std::cout << "VELOCITY SOLVER DATA: " << std::endl << std::flush;
     std::cout << "local_va_x: " << local_va_x << std::endl << std::flush;
     std::cout << "local_va_y: " << local_va_y << std::endl << std::flush;
@@ -973,7 +974,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     std::cout << "ang_dvb_n: " << ang_dvb_n << std::endl << std::flush;
     std::cout << "angular_effect: " << angular_effect << std::endl << std::flush;
     std::cout << "vc_change_per_imp_unit: " << vc_change_per_imp_unit << std::endl << std::flush;
-    std::cout<< "Impulse Magnitude: " << imp.mag << std::endl << std::flush;
+    std::cout<< "Impulse Magnitude: " << imp.mag << std::endl << std::flush; */
 
 }
 
