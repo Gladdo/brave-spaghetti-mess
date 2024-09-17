@@ -43,6 +43,7 @@ int main(void){
     // Initialize Rendering 
 
     rendering::quad_texture_shader::init();
+    rendering::sphere_shader::init();
     rendering::scene_image_framebuffer::init();
     rendering::debug_line_shader::init();
     rendering::debug_circle_shader::init();
@@ -180,6 +181,10 @@ int main(void){
                 if ( !game_data::world_rigidbodies_2d_box[i].free )
                     physic::dim2::numeric_integration(game_data::world_rigidbodies_2d_box[i].rb, delta_time.count(), 0, 0, 0);
             }
+            for( int i = 0; i < game_data::ARRAY_SIZE; i++ ) {
+                if ( !game_data::world_rigidbodies_2d_sphere[i].free )
+                    physic::dim2::numeric_integration(game_data::world_rigidbodies_2d_sphere[i].rb, delta_time.count(), 0, 0, 0);
+            }
         }
 
 
@@ -206,6 +211,7 @@ int main(void){
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Update each gameobject transform with the data inside their rigidbody
 
+        // BOX GAMEOBJECTS
         for( int i = 0; i < game_data::world_gameobjects_box.size(); i++ ) {
             int rb_id = game_data::world_gameobjects_box[i].rigidbody_2d_box_id;
             physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_box[rb_id].rb;
@@ -213,6 +219,16 @@ int main(void){
             game_data::world_gameobjects_box[i].transform_2d.world_x_pos = rb.pos_x;
             game_data::world_gameobjects_box[i].transform_2d.world_y_pos = rb.pos_y;
             game_data::world_gameobjects_box[i].transform_2d.world_z_angle = rb.angle;
+        }
+
+        // SPHERE GAMEOBJECTS
+        for( int i = 0; i < game_data::world_gameobjects_sphere.size(); i++ ) {
+            int rb_id = game_data::world_gameobjects_sphere[i].rigidbody_2d_sphere_id;
+            physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_sphere[rb_id].rb;
+
+            game_data::world_gameobjects_sphere[i].transform_2d.world_x_pos = rb.pos_x;
+            game_data::world_gameobjects_sphere[i].transform_2d.world_y_pos = rb.pos_y;
+            game_data::world_gameobjects_sphere[i].transform_2d.world_z_angle = rb.angle;
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -310,7 +326,7 @@ int main(void){
         rendering::camera.world_width_fov = rendering::game_scene_viewport.ratio * rendering::camera.world_height_fov;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                              RENDER GAME OBJECTS
+        //                                       RENDER GAME OBJECTS BOX
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Renders data inside game_data::world_gameobjects_box
 
@@ -351,7 +367,49 @@ int main(void){
             glDrawArrays(GL_TRIANGLES, 0, rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_number);
         }
 
-        glDisable(GL_DEPTH_TEST);  
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                       RENDER GAME OBJECTS SPHERE
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Renders data inside game_data::world_gameobjects_box
+
+        // ====================================================================================
+        // Setup the shader
+
+        glUseProgram(rendering::sphere_shader::program_id);
+        glBindVertexArray(rendering::sphere_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
+         
+
+        // Setup the shader to render using the wall texture
+        rendering::sphere_shader::set_uniform_texture_id(wall_texture_id);
+        rendering::sphere_shader::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
+
+        // ====================================================================================
+        // Iterate over all boxes data and render them
+
+        for ( auto element : game_data::world_gameobjects_sphere ) {
+
+            game_data::sphere_gameobject& sphere_go = element.second; 
+            game_data::transform_2d t = sphere_go.transform_2d;
+
+            // Calculate MVP based on box transform
+            rendering::calculate_mvp(
+                mvp, 
+                t.world_x_scale, 
+                t.world_y_scale, 
+                t.world_x_pos, 
+                t.world_y_pos, 
+                t.world_z_angle
+            );
+
+            // Setup shader uniforms
+            rendering::sphere_shader::set_uniform_outline(0);
+            rendering::sphere_shader::set_uniform_mvp(mvp);
+
+            // Render on the currently bounded framebuffer
+            glDrawArrays(GL_TRIANGLES, 0, rendering::sphere_shader::quad_mesh_data_buffers.mesh_vertex_number);
+        }
+
+        glDisable(GL_DEPTH_TEST); 
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                    COLLISION DETECTION: RENDERING
@@ -470,8 +528,17 @@ void DEBUG_naive_contact_detection_alg_physic(){
 
     std::vector<std::pair<physic::dim2::rigidbody*, physic::dim2::collider*>> world_bodies;
 
+    // Add all box colliders
     for(int i = 0; i < game_data::ARRAY_SIZE; i ++){
         game_data::rigidbody_2d_box& gdrb = game_data::world_rigidbodies_2d_box[i];
+        if(gdrb.free)
+            continue;
+        world_bodies.push_back({ & (gdrb.rb), & (gdrb.coll) });
+    }
+
+    // Add all sphere colliders
+    for(int i = 0; i < game_data::ARRAY_SIZE; i ++){
+        game_data::rigidbody_2d_sphere& gdrb = game_data::world_rigidbodies_2d_sphere[i];
         if(gdrb.free)
             continue;
         world_bodies.push_back({ & (gdrb.rb), & (gdrb.coll) });

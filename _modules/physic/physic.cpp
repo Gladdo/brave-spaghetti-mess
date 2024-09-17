@@ -112,7 +112,6 @@ void physic::dim2::apply_impulse(rigidbody& rb, impulse impulse){
     float ms_n_y;
     float norm;
     {
-        
 
         vec4 ws_n = { impulse.d_x, impulse.d_y, 0.0, 0 };
         vec4 ms_n;
@@ -257,7 +256,7 @@ void physic::dim2::contact_detection_dispatcher(std::vector<std::pair<rigidbody*
             // ------------------------------------------------------------------------------------
             // Check the specific type of colliders and dispatch the correct function
 
-            // BOX BOX
+            // BOX-BOX
             if( coll_A.type == collider::BOX && coll_B.type == collider::BOX){
                 
                 // Eventual broadphase function (not worth with simple contact generation functions) 
@@ -265,6 +264,13 @@ void physic::dim2::contact_detection_dispatcher(std::vector<std::pair<rigidbody*
 
                 // Contact generation function
                 new_contact = generate_boxbox_contactdata_naive_alg(A, B, (collider_box&) coll_A, (collider_box&) coll_B);
+            }
+
+            // SPHERE-SPHERE
+            if( coll_A.type == collider::SPHERE && coll_B.type == collider::SPHERE){
+
+                // Contact generation function
+                new_contact = generate_spheresphere_contactdata_norotation(A, B, (collider_sphere&) coll_A, (collider_sphere&) coll_B);
             }
 
             // ------------------------------------------------------------------------------------
@@ -278,6 +284,49 @@ void physic::dim2::contact_detection_dispatcher(std::vector<std::pair<rigidbody*
     }
 
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//             COLLISION DETECTION: CONTACT GENERATION - Sphere contact generation algorithms
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// =========================================================================|
+//               generate_spheresphere_contactdata_norotation
+// =========================================================================|
+
+physic::dim2::contact_data physic::dim2::generate_spheresphere_contactdata_norotation(rigidbody& A, rigidbody& B, collider_sphere& coll_A, collider_sphere& coll_B){
+
+    // NB: we consider no rotations / orientation for a sphere
+    // NB: we consider the normal on B surface
+
+    contact_data contact;
+    contact.pen = 0;
+
+    vec2 conjunction = { A.pos_x - B.pos_x, A.pos_y - B.pos_y };
+    float distance = vec2_len(conjunction);
+
+    if (distance > (coll_A.radius + coll_B.radius))
+        return contact;
+
+    
+
+    // Contact normal:
+    vec2 normal = { conjunction[0] / distance, conjunction[1] / distance };
+    
+    contact.ms_qa_x = - normal[0] * coll_A.radius;
+    contact.ms_qa_y = - normal[1] * coll_A.radius;
+    contact.ms_qb_x = normal[0] * coll_B.radius;
+    contact.ms_qb_y = normal[1] * coll_B.radius; 
+
+    contact.pen = coll_A.radius + coll_B.radius - distance;
+    contact.rb_a = &A;
+    contact.rb_b = &B;
+    contact.ws_n_x = normal[0];
+    contact.ws_n_y = normal[1];
+
+    return contact;
+
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //             COLLISION DETECTION: CONTACT GENERATION - BoxBox contact generation naive algorithm

@@ -36,9 +36,15 @@ namespace game_data{
     struct rigidbody_2d_box{
         physic::dim2::rigidbody rb;
         physic::dim2::collider_box coll;
-        bool free = true;
+        bool free = true;                               // Specify if the memory slot is active or not
     };
 
+    struct rigidbody_2d_sphere{
+        physic::dim2::rigidbody rb;
+        physic::dim2::collider_sphere coll;
+        bool free = true;                               // Specify if the memory slot is active or not
+    };
+    
     struct rigidbody_2d_halfspace{
         physic::dim2::rigidbody rb;
         physic::dim2::collider_halfspace coll;
@@ -59,6 +65,16 @@ namespace game_data{
     // Add a box_gameobject to the world_gameobjects_box map by building the correct 
     // dependencies between the components
     void AddBoxGameObject();
+
+    // ------------------------------------------------------------------------------------
+    // Sphere Gameobject
+
+    struct sphere_gameobject{
+        transform_2d transform_2d;
+        int rigidbody_2d_sphere_id;
+    };
+
+    void AddSphereGameObject();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                       UTILITY GAME DATA DECLARATIONS
@@ -85,11 +101,17 @@ namespace game_data{
     // Stores all the box rigidbodies in the game
     extern rigidbody_2d_box world_rigidbodies_2d_box [ARRAY_SIZE];
 
+    // Stores all the sphere rigidbodies in the game
+    extern rigidbody_2d_sphere world_rigidbodies_2d_sphere [ARRAY_SIZE];
+
     // Stores all the halfspace rigidbodies in the game
     extern rigidbody_2d_halfspace world_rigidbodies_2d_halfspace [ARRAY_SIZE];
 
     // Stores all the box gameobjects in the game
     extern std::map<int, box_gameobject> world_gameobjects_box;
+
+    // Stores all the sphere gameobjects in the game
+    extern std::map<int, sphere_gameobject> world_gameobjects_sphere;
 
     // ====================================================================================
     // Data for simulation starting impulses

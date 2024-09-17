@@ -10,60 +10,57 @@ namespace rendering{
 //                                      NOTES ON OPENGL:
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
     
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
     //                                         THEORY: OpenGL Shaders
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
     //
-    // =========================================================================|
+    // -------------------------------------------------------------------------|
     //                        OPENGL RENDERING FLOW
-    // =========================================================================|
+    // -------------------------------------------------------------------------|
     // 
-    // Per renderizzare è necessario bindare uno shader program; quando poi si
-    // utilizzano i comandi di draw, Opengl renderizza utilizzando lo shader 
-    // correntemente bidnato.
-    // Uno shader per renderizzare ha bisogno di vertici in input con i quali 
-    // popolare i suoi attributi; un VAO (vertex<->attribute object) specifica:
-    //      - l'id di un buffer contenente dati dei vertici (VBO) 
-    //      - come interpretare i dati all'interno del buffer e a quali attributi 
-    //        dello shader si devono legare.
+    // Per renderizzare è necessario bindare uno shader program; utilizzando i 
+    // comandi di draw, Opengl renderizza con lo shader correntemente bidnato.
+    // Per renderizzare, uno shader ha bisogno di vertici in input con i quali 
+    // popolare i suoi attributi. 
+    // Un VAO (Vertex Array Object) lega dei dati sulla memoria GPU all'input
+    // dello shader, specificando:
+    //      - L'id di un (Vertex) Buffer Object (VBO), che contiene i dati con
+    //        cui popolare gli attributi. 
+    //      - La configurazione di puntatori (Vertex attribute pointers)
+    //        ciascuno dei quali è associato ad un attributo dello shader e
+    //        specifica come leggere i dati nel VBO (per quello specifico
+    //        attributo)
     //
-    // =========================================================================|
+    // -------------------------------------------------------------------------|
     //                       SHADER UNIFORM VARIABLES
-    // =========================================================================|
+    // -------------------------------------------------------------------------|
     //
     // Ad un comando di draw lo shader viene eseguito più volte, una per ciascun 
-    // differente vertice di uno stesso oggetto; gli uniforms sono variabili 
+    // differente vertice di uno stesso modello; gli uniforms sono variabili 
     // dello shader che rimangono costanti per tutte le esecuzioni dei vertici di 
     // uno stesso oggetto.
     //
-    // Uniform utilizzate da questo shader:
-    //
-    //      - MVP:      specifica la matrice di trasformazione da applicare a tutti i
-    //                  vertici del quad
-    //      - outline:  specifica se il quad dev'essere contornato
-    //      - texUnit:  specifica l'unità texture da cui fare il sample dei pixel da applicare
-    //                  all'oggetto renderizzato; è necessario aver caricato una texture 
-    //                  su tale unità per utilizzarla nel rendering
-    //
-    // =========================================================================|
+    // -------------------------------------------------------------------------|
     //                       USING TEXTURES IN OPENGL
-    // =========================================================================|
+    // -------------------------------------------------------------------------|
     //
     // Per utilizzare una texture in uno shader è necessario:
-    //      - Creare texture buffer object sulla GPU (con id texture_id)
+    //      - Creare Texture Buffer Object sulla GPU (con id texture_id)
     //      - Caricare una immagine su di esso
-    //      - Caricare sulla TEXTURE_UNIT_1 l'immagine presente in un texture buffer object
-    //      - Caricare sull'uniform dello shader texUnit il valore "1" per specificare
-    //        allo shader di utilizzare l'immagine presente nella texture unit 1
+    //      - Configurare la texture (Minmap, Filters etc)
+    //      - Caricare su una texture unit della GPU (TEXTURE_UNIT_N) l'immagine 
+    //        presente su un Texture Buffer Object
+    //      - Caricare su un uniform di tipo Sampler il valore della texture unit 
+    //        contenente l'immagine da cui effettuare il sampling.
     //
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
     //                                        THEORY: OpenGL Framebuffers
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
     //
-    // =========================================================================|
+    // -------------------------------------------------------------------------|
     //                                 FRAMEBUFFER
-    // =========================================================================|
+    // -------------------------------------------------------------------------|
     //
     // OpenGL utilizza i framebuffers come containers per l'output delle chiamate
     // di rendering.
@@ -83,9 +80,9 @@ namespace rendering{
     //  - RenderBuffer: le informazioni vengono salvate su una specifica tipologia di
     //                  buffer ottimizzata per le operazioni di rendering
     //
-    // =========================================================================|
+    // -------------------------------------------------------------------------|
     //                                 VIEWPORT
-    // =========================================================================|
+    // -------------------------------------------------------------------------|
     //
     // You always need to call glViewport(x,y,width,height) before starting to draw 
     // to a framebuffer with a different size.
@@ -126,9 +123,9 @@ namespace rendering{
 //                                          FILE CODE:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////                                     
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
     //                                          Quad Texture Shader 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
     //
     //  Metodi e dati per gestire uno shader capace di renderizzare un quad con una texture
     //  applicata su di esso.
@@ -179,6 +176,15 @@ namespace rendering{
     //	    }
     //  }
     //
+    // Uniform utilizzate da questo shader:
+    //
+    //      - MVP:      specifica la matrice di trasformazione da applicare a tutti i
+    //                  vertici del quad
+    //      - outline:  specifica se il quad dev'essere contornato
+    //      - texUnit:  specifica l'unità texture da cui fare il sample dei pixel da applicare
+    //                  all'oggetto renderizzato; è necessario aver caricato una texture 
+    //                  su tale unità per utilizzarla nel rendering
+    //
     namespace quad_texture_shader{
 
         // -------------------------------------------------------------------------|
@@ -218,9 +224,52 @@ namespace rendering{
 
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
+    //                                          Quad Texture Shader 
+    //=================================================================================================================
+    //
+    namespace sphere_shader{
+
+        // -------------------------------------------------------------------------|
+        // Dati per gestire la mesh quadrata con cui lo shader renderizza
+
+        struct gpu_mesh_data_buffers{
+            GLuint mesh_vertexes_data_buffer_id;                    // Id del buffer sulla GPU contenente i vertici della mesh su cui viene poi renderizzata la texture
+            GLuint mesh_vertex_attribute_pointers_buffer_id;        // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
+            int mesh_vertex_number;                                 // Numero di vertici nella mesh
+        };
+
+        extern gpu_mesh_data_buffers quad_mesh_data_buffers;
+
+        // -------------------------------------------------------------------------|
+        // Shader Elements Ids 
+
+        extern GLuint program_id;                          // Id dello shader program presente sulla GPU
+
+        extern GLint mvp_location;                         // Id della variabile uniform MVP nel vertexshader
+        extern GLint outline_location;                     // Id della variabile uniform outline nel vertexshader
+        extern GLint tex_unit_location;                    // Id della variabile uniform texUnit nel fragmentshader
+        extern GLint screen_width_ratio_location;
+
+        // -------------------------------------------------------------------------|
+        // Funzioni di inizializzazione dello shader
+
+        void init();
+        void init_quad_mesh_buffers(int vertex_array_length, const float* vertex_array_data);
+
+        // -------------------------------------------------------------------------|
+        // Funzioni per impostare i valori degli uniform dello shader
+
+        void set_uniform_texture_id(GLuint texture_object_id);
+        void set_uniform_mvp(GLfloat mvp[16]);
+        void set_uniform_outline(bool outline);
+        void set_uniform_screen_width_ratio(float);
+
+    }
+
+    //=================================================================================================================
     //                                              Debug Shader
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
     // The shader draw call should work with stripes: we build shapes with lines (even 3d debug objects are drawn with 
     // lines and not triangles.).
     // Triangles are useful for rasterizer to determine pixels, but we only need to rasterize for lines to show hulls!
@@ -352,9 +401,9 @@ namespace rendering{
 
     };
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
     //                                          Scene Image Framebuffer
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
     // 
     //  Metodi e dati per gestire un framebuffer in cui si attiva solamente il color attachment memorizzato su un 
     //  buffer di tipo texture.
@@ -380,9 +429,9 @@ namespace rendering{
         void set_texture_size(float width, float height);       // Imposta la grandezza dell'immagine (texture) su cui salvare l'output del rendering
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
     //                                          Opengl Utility Functions
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
 
     GLuint opengl_create_shader_program(const char* vertex_shader_text_ptr, const char* fragment_shader_ptr);
     unsigned opengl_compile_shader(GLuint shader_id, const char* shader_source);
@@ -392,9 +441,9 @@ namespace rendering{
     void opengl_load_texture_on_texture_unit(GLuint texture_id, GLenum texture_unit);
     
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
     //                                                  Utility
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
 
     struct Viewport{
         int pixel_width;

@@ -11,6 +11,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int gui::game_object_list_selected_element_id = -1;
+enum gameobject_type {BOX, SPHERE};
+gameobject_type game_object_list_selected_element_type;
 gui::gui_parameters gui::parameters;
 
 // =========================================================================|
@@ -50,9 +52,13 @@ void gui::render_gui(){
     {
         if (ImGui::BeginMenu("Edit")) 
         {
-            if (ImGui::MenuItem("Add Game Object")) {
+            if (ImGui::MenuItem("Add BOX Game Object")) {
                 game_data::AddBoxGameObject();
             }     
+
+            if (ImGui::MenuItem("Add SPHERE Game Object")) {
+                game_data::AddSphereGameObject();
+            }   
             
         ImGui::EndMenu();
         }
@@ -88,6 +94,22 @@ void gui::render_gui(){
                 std::string text = "Box game object id: " + std::to_string(box_go_id);
                 if (ImGui::Button(text.c_str())) {
                     game_object_list_selected_element_id = box_go_id;
+                    game_object_list_selected_element_type = BOX;
+                }
+
+            }
+
+            // Iterate over all the world gameobjects
+            for (auto& el : game_data::world_gameobjects_sphere){
+
+                int sphere_go_id = el.first;
+                game_data::sphere_gameobject& sphere_go = el.second;
+
+                // Create a button with the current game object id; if selected, set game_object_list_selected_element_id
+                std::string text = "Sphere game object id: " + std::to_string(sphere_go_id);
+                if (ImGui::Button(text.c_str())) {
+                    game_object_list_selected_element_id = sphere_go_id;
+                    game_object_list_selected_element_type = SPHERE;
                 }
 
             }
@@ -117,7 +139,7 @@ void gui::render_gui(){
         ImGui::Indent();
         
         // Inspect only if a selected element exists
-        if(game_object_list_selected_element_id>=0)
+        if(game_object_list_selected_element_id>=0 && game_object_list_selected_element_type == BOX)
         {
             
             // ====================================================================================
@@ -268,7 +290,118 @@ void gui::render_gui(){
 
             
         }
-            ImGui::EndChild();
+            
+        if(game_object_list_selected_element_id>=0 && game_object_list_selected_element_type == SPHERE)
+        {
+            
+            // ====================================================================================
+            // Reference to inspected data
+
+            game_data::sphere_gameobject & sphere_go = game_data::world_gameobjects_sphere[game_object_list_selected_element_id];
+            game_data::transform_2d& t = sphere_go.transform_2d;
+            physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_sphere[sphere_go.rigidbody_2d_sphere_id].rb;
+            physic::dim2::collider_sphere& coll = game_data::world_rigidbodies_2d_sphere[sphere_go.rigidbody_2d_sphere_id].coll;
+
+            // ====================================================================================
+            // Transform data
+
+            ImGui::BulletText("Transform");
+
+            // ------------------------------------------------------------------------------------
+            // Position
+
+            static float t_pos_ui[2] = { 0.0f, 0.0f};
+
+            if(ImGui::InputFloat3("X-Y-Z", t_pos_ui)){
+                t.world_x_pos = t_pos_ui[0];
+                t.world_y_pos = t_pos_ui[1];
+                rb.pos_x = t_pos_ui[0];
+                rb.pos_y = t_pos_ui[1];
+            }else{
+                t_pos_ui[0] = t.world_x_pos;
+                t_pos_ui[1] = t.world_y_pos;
+            }
+
+            // ------------------------------------------------------------------------------------
+            // Angle
+
+            static float slider_f;
+            static ImGuiSliderFlags flags = ImGuiSliderFlags_None;
+            if(ImGui::SliderFloat("Angle", &slider_f, 0.0f, 360.0f, "%.3f", flags))
+            {
+                float rad_angle = slider_f * (2.0f * 3.14 / 360.0f);
+                t.world_z_angle = rad_angle;
+                rb.angle = rad_angle;
+            }else{
+                slider_f = t.world_z_angle / (2.0f * 3.14 / 360.0f);
+            }
+
+            // ------------------------------------------------------------------------------------
+            // Scale
+
+            static float r_size_ui = 0.0f;
+
+            if(ImGui::InputFloat("Radius", &r_size_ui)){
+                t.world_x_scale = r_size_ui;
+                t.world_y_scale = r_size_ui;
+                coll.radius = r_size_ui;
+            }else{
+                r_size_ui = coll.radius;
+            }
+
+            // ====================================================================================
+            // Rigidbody data
+            ImGui::BulletText("Rigidbody");
+
+            // ------------------------------------------------------------------------------------
+            // Velocity
+            
+            static float rb_vel_ui[2] = { 0.0f, 0.0f};
+
+            if(ImGui::InputFloat2("X-Y vel", rb_vel_ui)){
+                rb.vel_x = rb_vel_ui[0];
+                rb.vel_y = rb_vel_ui[1];
+            }else{
+                rb_vel_ui[0] = rb.vel_x;
+                rb_vel_ui[1] = rb.vel_y;
+            }
+
+            // ------------------------------------------------------------------------------------
+            // Angular Velocity
+
+            static float rb_w_ui;
+
+            if(ImGui::InputFloat("w", &rb_w_ui)){
+                rb.w = rb_w_ui;
+            }else{
+                rb_w_ui = rb.w;
+            }
+
+            // ------------------------------------------------------------------------------------
+            // Mass
+
+            static float rb_m_ui;
+
+            if(ImGui::InputFloat("Mass", &rb_m_ui)){
+                rb.m = rb_m_ui;
+            }else{
+                rb_m_ui = rb.m;
+            }
+
+            // ------------------------------------------------------------------------------------
+            // Inertia Moment
+
+            static float rb_i_ui;
+
+            if(ImGui::InputFloat("Moment", &rb_i_ui)){
+                rb.I = rb_i_ui;
+            }else{
+                rb_i_ui = rb.I;
+            }
+            
+        }    
+            
+        ImGui::EndChild();
 
         
     }

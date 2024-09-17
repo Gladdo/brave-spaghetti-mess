@@ -180,6 +180,174 @@ void rendering::quad_texture_shader::set_uniform_screen_width_ratio(float ratio)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                          Sphere Shader
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// -------------------------------------------------------------------------|
+// Quad Texture Shader data
+
+// Containers for ids containing quad mesh data in the GPU
+rendering::sphere_shader::gpu_mesh_data_buffers rendering::sphere_shader::quad_mesh_data_buffers;
+
+// Elements Ids 
+GLuint rendering::sphere_shader::program_id;                          // Id dello shader program presente sulla GPU
+
+// Uniforms
+GLint rendering::sphere_shader::tex_unit_location;                    // Id della variabile uniform texUnit nel fragmentshader
+GLint rendering::sphere_shader::mvp_location;                         // Id della variabile uniform MVP nel vertexshader
+GLint rendering::sphere_shader::outline_location;                     // Id della variabile uniform outline nel vertexshader
+GLint rendering::sphere_shader::screen_width_ratio_location;          // Id della variabile uniform outline nel vertexshader
+
+// =========================================================================|
+//                                  init
+// =========================================================================|
+
+// Description:
+// Crea un buffer (vbo) sulla memoria GPU e ci carica i vertici di un quad 
+// (specificati nel file resources/tex_vertex_data.txt).
+// Successivamente è creato e configurato un buffer vao che specifica:
+//      - l'id del vbo da cui leggere i dati
+//      - Come interpretare i dati nel vbo e come si legano all'input dello shader
+//
+void rendering::sphere_shader::init(){
+
+    // -------------------------------------------------------------------------|
+    // Setup variable ids 
+
+    std::string vertex_shader_source = load_multiline_txt_to_string("resources/sphere_vertex_shader_source.txt");
+    std::string fragment_shader_source = load_multiline_txt_to_string("resources/sphere_fragment_shader_source.txt");
+
+    // Compila e linka gli shader specificati nelle stringhe vertex_shader_source e fragment_shader_source creando il programma shader
+    program_id = opengl_create_shader_program( vertex_shader_source.c_str(), fragment_shader_source.c_str() );
+ 
+    // Carica l'id delle variabili uniform del programma (per poterle successivamente accedere):
+    tex_unit_location = glGetUniformLocation(program_id, "texUnit");
+    mvp_location = glGetUniformLocation(program_id, "MVP");
+    outline_location = glGetUniformLocation(program_id, "outline");
+    screen_width_ratio_location = glGetUniformLocation(program_id, "screen_width_ratio");
+
+    // -------------------------------------------------------------------------|
+    // Setup vertex data
+
+    // Load vertex data from file to RAM
+    std::vector<float> quad_vertex_data = load_txt_to_float_vector("resources/quad_vertex_data.txt");
+
+    // Load vertex data on GPU and configure vertex shader pointers (VAO): 
+    init_quad_mesh_buffers( quad_vertex_data.size(), quad_vertex_data.data() );
+}
+
+// =========================================================================|
+//                          init_quad_mesh_buffers
+// =========================================================================|
+
+void rendering::sphere_shader::init_quad_mesh_buffers(int vertex_array_length, const float* vertex_array_data){
+
+    // Crea riferimenti ai side effects di questa funzione
+    GLuint& vbo_id = quad_mesh_data_buffers.mesh_vertexes_data_buffer_id;
+    GLuint& vao_id = quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id;
+    int& vertex_number = quad_mesh_data_buffers.mesh_vertex_number;
+
+    // Numero di valori per ciascun vertice; dipende da quanti valori prende in input il vertex shader
+    const int vertex_size = 4;
+
+    // Se il numero di valori nell'array float non è un multiplo del size dei vertici, assert il missmatch
+    if (vertex_array_length%vertex_size != 0){
+        std::cerr << "Error: Mismatch between shader attributes and vertex size in texture_shader_configuration" << std::endl << std::flush;
+    }
+
+    // Imposta il numero di vertici presenti nella mesh
+    vertex_number = vertex_array_length/vertex_size;
+
+    // -------------------------------------------------------------------------|
+    // Carica i dati sulla GPU 
+
+    // Binda il VAO; in questo modo il VBO successivamente bindato e le sue configurazioni vengono associate a questo VAO
+    glGenVertexArrays(1, &(vao_id));
+    glBindVertexArray(vao_id);
+
+    // Genera il VBO, bindalo e caricaci i dati (trasferiscili da RAM a GPU)
+    glGenBuffers(1, &(vbo_id));
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*vertex_array_length, vertex_array_data, GL_STATIC_DRAW);
+
+    // -------------------------------------------------------------------------|
+    // Configura il VAO ( lega i dati della mesh all'input dello shader )
+    // Bind the mesh VAO to the quad texture shader; specifica nel VAO come lo shader deve legarli ai suoi input.
+    // Questo VAO è poi bindato quando lo shader viene eseguito sui dati della mesh
+
+    glUseProgram(program_id);
+
+    // Id delle variabili attributo vTexCoord e VPos del vertexshader
+    GLint vpos_location, vuv_location;
+
+    // Carica l'id delle variabili attributo del programma:
+    vpos_location = glGetAttribLocation(program_id, "vPos");
+    vuv_location = glGetAttribLocation(program_id, "vTexCoord");
+    
+    // Dimensione di ciascun attributo
+    const int attrib_pos_size = 2;
+    const int attrib_uv_size = 2;
+
+    // Attiva/inizializza l'attributo vPos dello shader
+    glEnableVertexAttribArray(vpos_location);
+    
+    // Lega l'attributo vPos dello shader ai primi due valori di ciascun vertice nel VBO
+    glVertexAttribPointer(vpos_location, attrib_pos_size, GL_FLOAT, GL_FALSE, sizeof(float)*vertex_size, (void*) 0);
+    
+    // Attiva/inizializza l'attributo vTexCoord dello shader
+    glEnableVertexAttribArray(vuv_location);
+
+    // Lega l'attributo vTexCoord dello shader agli ultimi due valori di ciascun vertice nel VBO
+    glVertexAttribPointer(vuv_location, attrib_uv_size, GL_FLOAT, GL_FALSE, sizeof(float)*vertex_size, (void*) (sizeof(float) * attrib_pos_size));
+
+    glUseProgram(0);
+
+    // Unbinda il VAO così che successive call al contesto di OpenGL non vadano implicitamente a modificarlo
+    glBindVertexArray(0);
+}
+
+// =========================================================================|
+//                          set_uniform_texture_id
+// =========================================================================|
+
+// Description:
+// Carica il texture_object di id texture_object_id sulla texture unit GL_TEXTURE1 
+// e imposta lo shader a fare il sample da tale texture unit
+//
+void rendering::sphere_shader::set_uniform_texture_id(GLuint texture_object_id){
+
+    // Carica il texture_object di id texture_object_id sulla texture unit GL_TEXTURE1
+    opengl_load_texture_on_texture_unit(texture_object_id, GL_TEXTURE1);
+
+    // Dice al sampler del fragment shader di leggere dalla texture presente sulla texture unit GL_TEXTURE1
+    glUniform1i(tex_unit_location, 1);
+}
+
+// =========================================================================|
+//                          set_uniform_mvp
+// =========================================================================|
+
+void rendering::sphere_shader::set_uniform_mvp(GLfloat mvp[16]){
+    glUniformMatrix4fv(mvp_location, 1, GL_FALSE, mvp);
+}
+
+// =========================================================================|
+//                          set_Uniform_outline
+// =========================================================================|
+
+void rendering::sphere_shader::set_uniform_outline(bool outline){
+    glUniform1i(outline_location, outline);
+}
+
+// =========================================================================|
+//                          set_Uniform_outline
+// =========================================================================|
+
+void rendering::sphere_shader::set_uniform_screen_width_ratio(float ratio){
+    glUniform1f(screen_width_ratio_location, ratio);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                          Debug Line Shader
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -63,16 +63,19 @@ namespace physic{
         // Colliders data structs:
 
         struct collider{
-            enum collider_type {BOX, HALFSPACE};
+            enum collider_type {BOX, SPHERE, HALFSPACE};
             collider_type type;
         };
 
         struct collider_box : collider{
-            
             collider_box(){ type = BOX; };
-
             float width;
             float height;
+        };
+
+        struct collider_sphere : collider{
+            collider_sphere(){ type = SPHERE; };
+            float radius;
         };
 
         struct collider_halfspace : collider{
@@ -119,6 +122,24 @@ namespace physic{
 
         void contact_detection_dispatcher(std::vector<std::pair<rigidbody*, collider*>>& world_bodies);
 
+        // ------------------------------------------------------------------------------------
+        // SPHERE-SPHERE
+        contact_data generate_spheresphere_contactdata_norotation(rigidbody& S, rigidbody& B, collider_sphere& coll_S, collider_sphere& coll_B);
+
+        // ------------------------------------------------------------------------------------
+        // SPHERE-BOX
+        //contact_data generate_spheresphere_contactdata(rigidbody& S, rigidbody& B, collider_sphere& coll_S, collider_box& coll_B);
+
+        // ------------------------------------------------------------------------------------
+        // SPHERE-HALFSPACE
+        //contact_data generate_spherehalfspace_contactdata(rigidbody& B, rigidbody& H, collider_sphere& coll_B, collider_halfspace& coll_H);
+
+        // ------------------------------------------------------------------------------------
+        // BOX-HALFSPACE
+        //contact_data generate_boxhalfspace_contactdata(rigidbody& B, rigidbody& H, collider_box& coll_B, collider_halfspace& coll_H);
+
+        // ------------------------------------------------------------------------------------
+        // BOX-BOX Contact generation functions
         // Restituisce il contatto del vertice di A con profondità maggiore in B
         
         contact_data generate_boxbox_contactdata_naive_alg(rigidbody& A, rigidbody& B, collider_box& coll_A, collider_box& coll_B);        
