@@ -21,13 +21,6 @@ GLFWwindow* window;
 auto previousTime = std::chrono::high_resolution_clock::now();
 std::chrono::duration<float> delta_time;
 
-// ====================================================================================
-// Functions prototypes
-
-void DEBUG_naive_contact_detection_alg_physic();
-void DEBUG_naive_contact_detection_alg_rendering();
-void DEBUG_contact_solver_rendering();
-
 int main(void){
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,114 +29,128 @@ int main(void){
 
     // ====================================================================================
     // Initialize Opengl window
-
-    window = rendering::opengl_glfw_initialization();
-
+    {
+        window = rendering::opengl_glfw_initialization();
+    }
     // ====================================================================================
     // Initialize Rendering 
-
-    rendering::quad_texture_shader::init();
-    rendering::sphere_shader::init();
-    rendering::scene_image_framebuffer::init();
-    rendering::debug_line_shader::init();
-    rendering::debug_circle_shader::init();
-
+    {
+        rendering::quad_texture_shader::init();
+        rendering::sphere_shader::init();
+        rendering::scene_image_framebuffer::init();
+        rendering::debug_line_shader::init();
+        rendering::debug_circle_shader::init();
+    }
     // ====================================================================================
     // Initialize GUI
-
-    gui::init(window);
-
+    {
+        gui::init(window);
+    }
     // ====================================================================================
     // Initialize Wall Texture
+    GLuint wall_texture_id;
+    {
+        int img_width, img_height;
+        std::vector<unsigned char> image_data;
 
-    int img_width, img_height;
-    std::vector<unsigned char> image_data;
+        // Load image data from jpg file to RAM 
+        image_data = load_image_to_unsigned_char_vector("resources/wall.jpg", &img_width, &img_height);
+        
+        // Create a texture object on the GPU and load image data to it
+        wall_texture_id = rendering::opengl_create_texture_buffer(image_data.data(), img_width, img_height);
 
-    // Load image data from jpg file to RAM 
-    image_data = load_image_to_unsigned_char_vector("resources/wall.jpg", &img_width, &img_height);
+        image_data.clear();
+    }
     
-    // Create a texture object on the GPU and load image data to it
-    GLuint wall_texture_id = rendering::opengl_create_texture_buffer(image_data.data(), img_width, img_height);
-
-    image_data.clear();
-
     // ====================================================================================
     // Initialize sim play and sim pause buttons images
+    {
+        int img_width, img_height;
+        std::vector<unsigned char> image_data;
+    
+        // Initialize play button texture
+        image_data = load_image_to_unsigned_char_vector("resources/ui-images/sim-play-button.png", &img_width, &img_height);
+        game_data::sim_play_button_texture_id = rendering::opengl_create_texture_buffer(image_data.data(), img_width, img_height, 4);
+        image_data.clear();
 
-    // Initialize play button texture
-    image_data = load_image_to_unsigned_char_vector("resources/ui-images/sim-play-button.png", &img_width, &img_height);
-    game_data::sim_play_button_texture_id = rendering::opengl_create_texture_buffer(image_data.data(), img_width, img_height, 4);
-    image_data.clear();
-
-    // initialize pause button texture
-    image_data = load_image_to_unsigned_char_vector("resources/ui-images/sim-pause-button.png", &img_width, &img_height);
-    game_data::sim_pause_button_texture_id = rendering::opengl_create_texture_buffer(image_data.data(), img_width, img_height, 4);
-    image_data.clear();
-
+        // initialize pause button texture
+        image_data = load_image_to_unsigned_char_vector("resources/ui-images/sim-pause-button.png", &img_width, &img_height);
+        game_data::sim_pause_button_texture_id = rendering::opengl_create_texture_buffer(image_data.data(), img_width, img_height, 4);
+        image_data.clear();
+    }
+    
     // ====================================================================================
-    // Quad Texture Shader Uniform configuration
-
-    float mvp [16];
-
+    // Initialize Rendering Camera properties
+    {
+        rendering::camera.world_x_pos = 0;
+        rendering::camera.world_y_pos = 0;
+        rendering::camera.world_z_angle = 0;
+        rendering::camera.world_width_fov = 0;  // derived quantity
+        rendering::camera.world_height_fov = 20;
+        rendering::camera.world_near_clip = 0;
+        rendering::camera.world_far_clip = 20;
+    }
+    
     // ====================================================================================
     // Initialize Rendering Camera properties
 
-    rendering::camera.world_x_pos = 0;
-    rendering::camera.world_y_pos = 0;
-    rendering::camera.world_z_angle = 0;
-    rendering::camera.world_width_fov = 0;  // derived quantity
-    rendering::camera.world_height_fov = 20;
-    rendering::camera.world_near_clip = 0;
-    rendering::camera.world_far_clip = 20;
-
-    // ====================================================================================
-    // Initialize Rendering Camera properties
     bool simulation_run = true;
-
+    
     while (!glfwWindowShouldClose(window))
     { 
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                              MAIN LOOP START
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //=================================================================================================================
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                               MANAGE INPUTS
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                              MAIN LOOP START                                                    
+        
+        //=================================================================================================================
 
-        inputs::update();
+        //=================================================================================================================
+        
+        //                                          UPDATE INPUT STATE VARIABLES                                                      
+        
+        //=================================================================================================================
 
-        if( inputs::simulation_run_toggle_button == inputs::PRESS ){
-            if(simulation_run == true){
-                simulation_run = false;
-                std::cout << "Simulation run false" << std::endl << std::flush;
-            }else{
-                simulation_run = true;
-                std::cout << "Simulation run true" << std::endl << std::flush;
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            
+            inputs::update();
+
+            if( inputs::simulation_run_toggle_button == inputs::PRESS ){
+                if(simulation_run == true){
+                    simulation_run = false;
+                    std::cout << "Simulation run false" << std::endl << std::flush;
+                }else{
+                    simulation_run = true;
+                    std::cout << "Simulation run true" << std::endl << std::flush;
+                }
             }
-        }
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                           MANAGE MOUSE USER CLICK
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //=================================================================================================================
+
+        //                                 CHECK IF MOUSE INPUT CLICKED ON SOME GAME OBJECT
+        
+        //=================================================================================================================
+        
+        // DESCRIPTION: 
         // If the user left click anywhere on the app client, check if the click happens to be on the scene tab.
         // If it is, translate the click coordinates from screen space to game world coordinate; then iterate over 
         // all box_gameobjects to check if the mouse hits a rigidbody.
         // If it does set the flag "event_is_dragging_active" and store in "dragged_game_object_id" the id of the game 
         // object hit by the mouse click
-
+        
         // Se è stato premuto il tasto sinistro del mouse e il click è sul tab della scena        
-        if (inputs::mouse_left_button == inputs::PRESS && inputs::check_if_click_is_on_scene()){
+        if (inputs::mouse_left_button == inputs::PRESS && inputs::check_if_click_is_on_scene())
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            // Itera su tutti i game objects
-            for( auto& game_object : game_data::world_gameobjects_box) {
+            // Itera su tutti i box game objects
+            for( auto& box_go : game_data::boxGameobjects) {
+
                 
-                int go_id = game_object.first;
-                game_data::box_gameobject& bgo = game_object.second;
-                physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_box[bgo.rigidbody_2d_box_id].rb;
-                physic::dim2::collider_box& coll = game_data::world_rigidbodies_2d_box[bgo.rigidbody_2d_box_id].coll;
+                        
+                physic::dim2::rigidbody& rb = box_go.rb;
+                physic::dim2::collider_box& coll = box_go.coll;
 
                 // Controlla se le coordinate del mouse in world space sono dentro al box corrente
                 // NB: world_x_pos e world_y_pos del mouse click sono calcolate nello step di update degli inputs
@@ -158,517 +165,596 @@ int main(void){
                         coll.height) 
                 ){
                     game_data::event_is_dragging_active = true;
-                    game_data::dragged_game_object_id = go_id;
+                    
+                    // Set draggedGameObject pointers
+                    // WARNING: Pointing to an array element
+                    game_data::draggedGameObject.world_x_pos = &box_go.world_x_pos;
+                    game_data::draggedGameObject.world_x_scale = &box_go.world_x_scale;
+                    game_data::draggedGameObject.world_y_pos = &box_go.world_y_pos;
+                    game_data::draggedGameObject.world_y_scale = &box_go.world_y_scale;
+                    game_data::draggedGameObject.world_z_angle = &box_go.world_z_angle;
+                    game_data::draggedGameObject.render_outline = &box_go.render_outline;
+                    game_data::draggedGameObject.rb = &box_go.rb;
+                    game_data::draggedGameObject.coll = &box_go.coll;
+                    game_data::draggedGameObject.gameobject_id = &box_go.gameobject_id;
+
                 }
 
             }
-        }
+            
+            
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //=================================================================================================================
+
         //                                             UPDATE DELTA TIME
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        delta_time = std::chrono::high_resolution_clock::now() - previousTime;
-        previousTime = std::chrono::high_resolution_clock::now(); 
+        //=================================================================================================================
+        
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            delta_time = std::chrono::high_resolution_clock::now() - previousTime;
+            previousTime = std::chrono::high_resolution_clock::now(); 
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        //=================================================================================================================
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                      WORLD RIGIDBODIES NUMERIC INTEGRATION
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                              PHYSIC UPDATE: Rigidbodies numeric integration
+        
+        //=================================================================================================================
+        
+        // DESCRIPTION:
         // Update all rigidbodies data inside "world_rigidbodies_2d_box"
-
-        if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run){
-            for( int i = 0; i < game_data::ARRAY_SIZE; i++ ) {
-                if ( !game_data::world_rigidbodies_2d_box[i].free )
-                    physic::dim2::numeric_integration(game_data::world_rigidbodies_2d_box[i].rb, delta_time.count(), 0, 0, 0);
+        
+        if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run)
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            
+            for( auto& box_go : game_data::boxGameobjects){
+                physic::dim2::numeric_integration(box_go.rb, delta_time.count(), 0, 0, 0);
             }
-            for( int i = 0; i < game_data::ARRAY_SIZE; i++ ) {
-                if ( !game_data::world_rigidbodies_2d_sphere[i].free )
-                    physic::dim2::numeric_integration(game_data::world_rigidbodies_2d_sphere[i].rb, delta_time.count(), 0, 0, 0);
+
+            for (auto& sphere_go : game_data::sphereGameobjects){
+                physic::dim2::numeric_integration(sphere_go.rb, delta_time.count(), 0, 0, 0);
             }
-        }
+    
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+       
+        //=================================================================================================================
 
-
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                        COLLISION DETECTION: PHYSIC
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run){
-            // Populate physic::dim2::contacts vector with collision between game world colliders
-            DEBUG_naive_contact_detection_alg_physic();
-        }
-
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                         COLLISION SOLVER: PHYSIC
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                           PHYSIC UPDATE: Generate contact data with naive algorithm
+        
+        //=================================================================================================================
 
         if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run)
-            physic::dim2::contact_solver_dispatcher();
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                      UPDATE GAME OBJECTS TRANSFORMS
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Update each gameobject transform with the data inside their rigidbody
+            // ====================================================================================
+            // Reset contact vector from eventual unresolved contacts from previous frame
+            
+            physic::dim2::contacts.clear();
 
-        // BOX GAMEOBJECTS
-        for( int i = 0; i < game_data::world_gameobjects_box.size(); i++ ) {
-            int rb_id = game_data::world_gameobjects_box[i].rigidbody_2d_box_id;
-            physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_box[rb_id].rb;
+            // ====================================================================================
+            // Dispatch the collision tests and populate the contacts vector
 
-            game_data::world_gameobjects_box[i].transform_2d.world_x_pos = rb.pos_x;
-            game_data::world_gameobjects_box[i].transform_2d.world_y_pos = rb.pos_y;
-            game_data::world_gameobjects_box[i].transform_2d.world_z_angle = rb.angle;
-        }
+            // BOX-BOX DISPATCH:
 
-        // SPHERE GAMEOBJECTS
-        for( int i = 0; i < game_data::world_gameobjects_sphere.size(); i++ ) {
-            int rb_id = game_data::world_gameobjects_sphere[i].rigidbody_2d_sphere_id;
-            physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_sphere[rb_id].rb;
+            if(game_data::boxGameobjects.size() != 0){
+                for(int i = 0; i < game_data::boxGameobjects.size()-1; i ++){
+                    for(int j = i+1; j < game_data::boxGameobjects.size(); j++){
 
-            game_data::world_gameobjects_sphere[i].transform_2d.world_x_pos = rb.pos_x;
-            game_data::world_gameobjects_sphere[i].transform_2d.world_y_pos = rb.pos_y;
-            game_data::world_gameobjects_sphere[i].transform_2d.world_z_angle = rb.angle;
-        }
+                        game_data::BoxGameObject& boxA = game_data::boxGameobjects[i];
+                        game_data::BoxGameObject& boxB = game_data::boxGameobjects[j];
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                         MANAGE DRAGGING EVENT
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // If the flag "event_is_dragging_active" is set, update the dragged gameobject's transform and rigidbody data 
-        // with the world mouse position.
+                        physic::dim2::contact_data new_contact = generate_boxbox_contactdata_naive_alg(boxA.rb, boxB.rb, boxA.coll, boxB.coll);
 
-        if(game_data::event_is_dragging_active){
-
-            // On first dragging frame, setup the renderer to highlight 
-            if (inputs::mouse_left_button == inputs::PRESS) {
-                game_data::world_gameobjects_box[game_data::dragged_game_object_id].render_outline = true;
+                        if (new_contact.pen > 0){
+                            physic::dim2::contacts.push_back(new_contact);
+                        }
+                    }
+                }
             }
+   
+            // SPHERE-SPHERE DISPATCH
 
-            // If mouse is released, remove event dragging and remove the highlight
-            if (inputs::mouse_left_button == inputs::RELEASE) {
-                game_data::world_gameobjects_box[game_data::dragged_game_object_id].render_outline = false;
-                game_data::event_is_dragging_active = false;
+            if(game_data::sphereGameobjects.size() != 0){
+                for(int i = 0; i < game_data::sphereGameobjects.size()-1; i ++){
+                    for(int j = i+1; j < game_data::sphereGameobjects.size(); j++){
+
+                        game_data::SphereGameObject& sphereA = game_data::sphereGameobjects[i];
+                        game_data::SphereGameObject& sphereB = game_data::sphereGameobjects[j];
+
+                        physic::dim2::contact_data new_contact = generate_spheresphere_contactdata_norotation(sphereA.rb, sphereB.rb, sphereA.coll, sphereB.coll);
+
+                        if (new_contact.pen > 0){
+                            physic::dim2::contacts.push_back(new_contact);
+                        }
+                    }
+                }
             }
             
-            // Update the dragged game object while holding the left mouse button
-            if (inputs::mouse_left_button == inputs::HOLD | inputs::mouse_left_button == inputs::PRESS) {
+            
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //=================================================================================================================
+
+        //                                  PHYSIC UPDATE: Solve contact data
+
+        //=================================================================================================================
+
+        if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run)
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+                physic::dim2::contact_solver_dispatcher();
                 
-                double curr_cursor_ndc_x, curr_cursor_ndc_y;
-                float curr_cursor_world_x, curr_cursor_world_y;
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        //=================================================================================================================
 
-                // Calculate mouse cursor position from pixel application coordinates to world coordinates
-                inputs::convert_screen_pixel_coords_to_ndc(
-                    curr_cursor_ndc_x, curr_cursor_ndc_y,
-                    inputs::mouse_cursor_position.pixel_x_pos, inputs::mouse_cursor_position.pixel_y_pos
-                );
-                inputs::convert_ndc_coords_to_world(
-                    curr_cursor_world_x, curr_cursor_world_y,
-                    curr_cursor_ndc_x, curr_cursor_ndc_y
-                );
+        //                              UPDATE GAMEOBJECT TRANSFORMS WITH RIGIDBODY DATA
 
-                // Update the box gameobject positional data with the current cursor world position                
-                game_data::box_gameobject& game_object = game_data::world_gameobjects_box.at(game_data::dragged_game_object_id); 
-                game_data::transform_2d t = game_object.transform_2d;
-                physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_box[game_object.rigidbody_2d_box_id].rb;
+        //=================================================================================================================
+        
+        // DESCRIPTION:
+        // Update each gameobject transform with the data inside their rigidbody
+        
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-                t.world_x_pos = curr_cursor_world_x;
-                t.world_y_pos = curr_cursor_world_y;
-                rb.pos_x = curr_cursor_world_x;
-                rb.pos_y = curr_cursor_world_y;                 
+            // BOX GAMEOBJECTS
+            for( auto& box_go : game_data::boxGameobjects ) {
+                box_go.world_x_pos = box_go.rb.pos_x;
+                box_go.world_y_pos = box_go.rb.pos_y;
+                box_go.world_z_angle = box_go.rb.angle;
             }
 
-        }
+            // SPHERE GAMEOBJECTS
+            for( auto& sphere_go : game_data::sphereGameobjects ) {
+                sphere_go.world_x_pos = sphere_go.rb.pos_x;
+                sphere_go.world_y_pos = sphere_go.rb.pos_y;
+                sphere_go.world_z_angle = sphere_go.rb.angle;
+            }
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                       SETUP GAME SCENE FRAMEBUFFER 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
-        // ====================================================================================
-        //                              Setup rendering frame
-        // ====================================================================================
-        // Update the game scene framebuffer
+        //=================================================================================================================
 
-        // Ridimensiona la texutre in cui è renderizzata la scena in base alla dimensione dell'elemento
-        // Image della gui in cui verrà successivamente applicata.
-        rendering::scene_image_framebuffer::set_texture_size(
-            gui::parameters.scene_window.inner_img_pixel_width,
-            gui::parameters.scene_window.inner_img_pixel_height
-        );
+        //                                         MANAGE DRAGGING EVENT
 
-        rendering::scene_image_framebuffer::activate();
+        //=================================================================================================================
+        
+        // DESCRIPTION:
+        // If the flag "event_is_dragging_active" is set, update the dragged gameobject's transform and rigidbody data 
+        // with the world mouse position.
+        
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            if(game_data::event_is_dragging_active){
 
-        // Setuppa i parametri del viewport della scena di gioco
-        rendering::game_scene_viewport.pixel_width = gui::parameters.scene_window.inner_img_pixel_width;
-        rendering::game_scene_viewport.pixel_height = gui::parameters.scene_window.inner_img_pixel_height;
-        rendering::game_scene_viewport.ratio =
-            rendering::game_scene_viewport.pixel_width /
-            ((float) rendering::game_scene_viewport.pixel_height);
+                // On first dragging frame, setup the renderer to highlight 
+                if (inputs::mouse_left_button == inputs::PRESS) {
+                    *game_data::draggedGameObject.render_outline = true;
+                }
 
-        // Specifica ad opengl la dimensione del canvas dove renderizzare
-        // (Sostanzialmente si specifica come associare i pixel del monitor in cui si visualizza il gioco
-        // con i pixel del framebuffer in cui è contenuto l'output delle operazioni di rendering) 
-        glViewport(
-            0,              
-            0, 
-            rendering::game_scene_viewport.pixel_width, 
-            rendering::game_scene_viewport.pixel_height);
+                // If mouse is released, remove event dragging and remove the highlight
+                if (inputs::mouse_left_button == inputs::RELEASE) {
+                    *game_data::draggedGameObject.render_outline = false;
+                    game_data::event_is_dragging_active = false;
+                }
+                
+                // Update the dragged game object while holding the left mouse button
+                if (inputs::mouse_left_button == inputs::HOLD | inputs::mouse_left_button == inputs::PRESS) {
+                    
+                    double curr_cursor_ndc_x, curr_cursor_ndc_y;
+                    float curr_cursor_world_x, curr_cursor_world_y;
 
-        glEnable(GL_DEPTH_TEST); 
+                    // Calculate mouse cursor position from pixel application coordinates to world coordinates
+                    inputs::convert_screen_pixel_coords_to_ndc(
+                        curr_cursor_ndc_x, curr_cursor_ndc_y,
+                        inputs::mouse_cursor_position.pixel_x_pos, inputs::mouse_cursor_position.pixel_y_pos
+                    );
+                    inputs::convert_ndc_coords_to_world(
+                        curr_cursor_world_x, curr_cursor_world_y,
+                        curr_cursor_ndc_x, curr_cursor_ndc_y
+                    );
 
-        // Remove the old image from tehe framebuffer:
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                    // Update the box gameobject positional data with the current cursor world position                
 
-        // ====================================================================================
-        // Update the rendering Camera parameters
+                    *game_data::draggedGameObject.world_x_pos = curr_cursor_world_x;
+                    *game_data::draggedGameObject.world_y_pos = curr_cursor_world_y;
+                    game_data::draggedGameObject.rb->pos_x = curr_cursor_world_x;
+                    game_data::draggedGameObject.rb->pos_y = curr_cursor_world_y;                 
+                }
 
-        // Imposta la width della camera di gioco in modo che ciò che cattura nel game world rifletta 
-        // il rapporto con cui viene mostrata sullo schermo
-        rendering::camera.world_width_fov = rendering::game_scene_viewport.ratio * rendering::camera.world_height_fov;
+            }
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        //=================================================================================================================
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                       RENDER GAME OBJECTS BOX
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Renders data inside game_data::world_gameobjects_box
+        //                                     SETUP GAMESCENE-FRAMEBUFFER 
 
-        // ====================================================================================
-        // Setup the shader
+        //=================================================================================================================
+        
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            // ====================================================================================
+            //                              Setup rendering frame
+            // ====================================================================================
+            // Update the game scene framebuffer
 
-        glUseProgram(rendering::quad_texture_shader::program_id);
-        glBindVertexArray(rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
-         
-
-        // Setup the shader to render using the wall texture
-        rendering::quad_texture_shader::set_uniform_texture_id(wall_texture_id);
-        rendering::quad_texture_shader::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
-
-        // ====================================================================================
-        // Iterate over all boxes data and render them
-
-        for ( auto element : game_data::world_gameobjects_box ) {
-
-            game_data::box_gameobject& box_go = element.second; 
-            game_data::transform_2d t = box_go.transform_2d;
-
-            // Calculate MVP based on box transform
-            rendering::calculate_mvp(
-                mvp, 
-                t.world_x_scale, 
-                t.world_y_scale, 
-                t.world_x_pos, 
-                t.world_y_pos, 
-                t.world_z_angle
+            // Ridimensiona la texutre in cui è renderizzata la scena in base alla dimensione dell'elemento
+            // Image della gui in cui verrà successivamente applicata.
+            rendering::scene_image_framebuffer::set_texture_size(
+                gui::parameters.scene_window.inner_img_pixel_width,
+                gui::parameters.scene_window.inner_img_pixel_height
             );
 
-            // Setup shader uniforms
-            rendering::quad_texture_shader::set_uniform_outline(box_go.render_outline);
-            rendering::quad_texture_shader::set_uniform_mvp(mvp);
+            rendering::scene_image_framebuffer::activate();
 
-            // Render on the currently bounded framebuffer
-            glDrawArrays(GL_TRIANGLES, 0, rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_number);
-        }
+            // Setuppa i parametri del viewport della scena di gioco
+            rendering::game_scene_viewport.pixel_width = gui::parameters.scene_window.inner_img_pixel_width;
+            rendering::game_scene_viewport.pixel_height = gui::parameters.scene_window.inner_img_pixel_height;
+            rendering::game_scene_viewport.ratio =
+                rendering::game_scene_viewport.pixel_width /
+                ((float) rendering::game_scene_viewport.pixel_height);
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                       RENDER GAME OBJECTS SPHERE
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Specifica ad opengl la dimensione del canvas dove renderizzare
+            // (Sostanzialmente si specifica come associare i pixel del monitor in cui si visualizza il gioco
+            // con i pixel del framebuffer in cui è contenuto l'output delle operazioni di rendering) 
+            glViewport(
+                0,              
+                0, 
+                rendering::game_scene_viewport.pixel_width, 
+                rendering::game_scene_viewport.pixel_height);
+
+            glEnable(GL_DEPTH_TEST); 
+
+            // Remove the old image from tehe framebuffer:
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            // ====================================================================================
+            // Update the rendering Camera parameters
+
+            // Imposta la width della camera di gioco in modo che ciò che cattura nel game world rifletta 
+            // il rapporto con cui viene mostrata sullo schermo
+            rendering::camera.world_width_fov = rendering::game_scene_viewport.ratio * rendering::camera.world_height_fov;
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        //=================================================================================================================
+
+        //                             GAMESCENE-FRAMEBUFFER RENDERING: Box Gameobjects
+
+        //=================================================================================================================
+        
+        // DESCRIPTION:
         // Renders data inside game_data::world_gameobjects_box
+        
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            // ====================================================================================
+            // Setup the shader
 
-        // ====================================================================================
-        // Setup the shader
+            glUseProgram(rendering::quad_texture_shader::program_id);
+            glBindVertexArray(rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
+            
 
-        glUseProgram(rendering::sphere_shader::program_id);
-        glBindVertexArray(rendering::sphere_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
-         
+            // Setup the shader to render using the wall texture
+            rendering::quad_texture_shader::set_uniform_texture_id(wall_texture_id);
+            rendering::quad_texture_shader::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
 
-        // Setup the shader to render using the wall texture
-        rendering::sphere_shader::set_uniform_texture_id(wall_texture_id);
-        rendering::sphere_shader::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
+            // ====================================================================================
+            // Iterate over all boxes data and render them
 
-        // ====================================================================================
-        // Iterate over all boxes data and render them
+            float mvp [16];
 
-        for ( auto element : game_data::world_gameobjects_sphere ) {
+            for ( auto& box_go : game_data::boxGameobjects ) {
 
-            game_data::sphere_gameobject& sphere_go = element.second; 
-            game_data::transform_2d t = sphere_go.transform_2d;
+                // Calculate MVP based on box transform
+                rendering::calculate_mvp(
+                    mvp, 
+                    box_go.world_x_scale, 
+                    box_go.world_y_scale, 
+                    box_go.world_x_pos, 
+                    box_go.world_y_pos, 
+                    box_go.world_z_angle
+                );
 
-            // Calculate MVP based on box transform
-            rendering::calculate_mvp(
-                mvp, 
-                t.world_x_scale, 
-                t.world_y_scale, 
-                t.world_x_pos, 
-                t.world_y_pos, 
-                t.world_z_angle
-            );
+                // Setup shader uniforms
+                rendering::quad_texture_shader::set_uniform_outline(box_go.render_outline);
+                rendering::quad_texture_shader::set_uniform_mvp(mvp);
 
-            // Setup shader uniforms
-            rendering::sphere_shader::set_uniform_outline(0);
-            rendering::sphere_shader::set_uniform_mvp(mvp);
+                // Render on the currently bounded framebuffer
+                glDrawArrays(GL_TRIANGLES, 0, rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_number);
+            }
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        //=================================================================================================================
 
-            // Render on the currently bounded framebuffer
-            glDrawArrays(GL_TRIANGLES, 0, rendering::sphere_shader::quad_mesh_data_buffers.mesh_vertex_number);
-        }
+        //                             GAMESCENE-FRAMEBUFFER RENDERING: Sphere Gameobjects
 
-        glDisable(GL_DEPTH_TEST); 
+        //=================================================================================================================
+        
+        // DESCRIPTION:
+        // Renders data inside game_data::world_gameobjects_box
+        
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            // ====================================================================================
+            // Setup the shader
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                    COLLISION DETECTION: RENDERING
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            glUseProgram(rendering::sphere_shader::program_id);
+            glBindVertexArray(rendering::sphere_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
+            
+
+            // Setup the shader to render using the wall texture
+            rendering::sphere_shader::set_uniform_texture_id(wall_texture_id);
+            rendering::sphere_shader::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
+
+            // ====================================================================================
+            // Iterate over all spheres data and render them
+
+            float mvp [16];
+
+            for ( auto& sphere_go : game_data::sphereGameobjects ) {
+
+                // Calculate MVP based on box transform
+                rendering::calculate_mvp(
+                    mvp, 
+                    sphere_go.world_x_scale, 
+                    sphere_go.world_y_scale, 
+                    sphere_go.world_x_pos, 
+                    sphere_go.world_y_pos, 
+                    sphere_go.world_z_angle
+                );
+
+                // Setup shader uniforms
+                rendering::sphere_shader::set_uniform_outline(0);
+                rendering::sphere_shader::set_uniform_mvp(mvp);
+
+                // Render on the currently bounded framebuffer
+                glDrawArrays(GL_TRIANGLES, 0, rendering::sphere_shader::quad_mesh_data_buffers.mesh_vertex_number);
+            }
+
+            glDisable(GL_DEPTH_TEST); 
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        //=================================================================================================================
+        
+        //                            GAMESCENE-FRAMEBUFFER RENDERING: Contact data informations
+
+        //=================================================================================================================
+        
+        // DESCRIPTION:
         // Renders data inside physic::dim2::contacts vector
+            
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            
+            // Renders visually the data inside the physic::dim2::contacts vector 
+                           
+            glUseProgram(rendering::debug_line_shader::program_id);
+            glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+
+            for (auto contact : physic::dim2::contacts){
+
+                // Find QA world contact coordinates
+                mat4x4 model_matrix;
+                physic::dim2::build_model_matrix(model_matrix, contact.rb_a->pos_x, contact.rb_a->pos_y, contact.rb_a->angle );
+                vec4 world_qa;
+                vec4 local_qa = {contact.ms_qa_x, contact.ms_qa_y, 0, 1};
+                mat4x4_mul_vec4(world_qa, model_matrix, local_qa);
+
+                // Find QB world contact coordinates
+                physic::dim2::build_model_matrix(model_matrix, contact.rb_b->pos_x, contact.rb_b->pos_y, contact.rb_b->angle );
+                vec4 world_qb;
+                vec4 local_qb= {contact.ms_qb_x, contact.ms_qb_y, 0, 1};
+                mat4x4_mul_vec4(world_qb, model_matrix, local_qb);
+
+                // Render QA
+                rendering::debug_line_shader::draw_2d_point(world_qa[0],world_qa[1]);
+
+                // Render QB
+                rendering::debug_line_shader::draw_2d_point(world_qb[0],world_qb[1]);
+
+                // Render the normal (applied on QB)
+                rendering::debug_line_shader::draw_2d_line_stripe( 
+                    world_qb[0],
+                    world_qb[1],
+                    0,
+                    {0, 0, contact.ws_n_x, contact.ws_n_y}
+                );
+            
+            }
+
+            
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
-        //DEBUG_naive_contact_detection_alg_rendering();        
+        //=================================================================================================================
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                      COLLISION SOLVER: RENDERING 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                GAMESCENE-FRAMEBUFFER RENDERING: Impulse circles
+
+        //=================================================================================================================
         
-        if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run){
-            //DEBUG_contact_solver_rendering();
-        }
+        if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run)
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                
+            for( int i = 0; i < physic::dim2::contacts.size(); i++ ){
+    
+                physic::dim2::contact_data& contact = physic::dim2::contacts[i];
+
+                game_data::contact_circle_animations.push_back({});
+                int last_element = game_data::contact_circle_animations.size()-1;
+
+                // Find QB world contact coordinates
+                mat4x4 model_matrix;
+                physic::dim2::build_model_matrix(model_matrix, contact.rb_b->pos_x, contact.rb_b->pos_y, contact.rb_b->angle );
+                vec4 world_qb;
+                vec4 local_qb= {contact.ms_qb_x, contact.ms_qb_y, 0, 1};
+                mat4x4_mul_vec4(world_qb, model_matrix, local_qb);
+
+                game_data::contact_circle_animations[last_element].world_x = world_qb[0];
+                game_data::contact_circle_animations[last_element].world_y = world_qb[1];
+
+                game_data::contact_circle_animations[last_element].impulse_axis_x = contact.ws_n_x;
+                game_data::contact_circle_animations[last_element].impulse_axis_y = contact.ws_n_y;
+
+            }
+            
+            glUseProgram(rendering::debug_circle_shader::program_id);
+            glBindVertexArray(rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
+
+            for( int i = 0 ; i < game_data::contact_circle_animations.size(); i ++ ){
+
+                game_data::contact_circle_animation& c_anim = game_data::contact_circle_animations[i];
+
+                if(c_anim.size >= c_anim.max_size){
+                    game_data::contact_circle_animations.erase( game_data::contact_circle_animations.begin() + i );
+                    i--;
+                    continue;
+                }
+
+                float mvp [16];
+
+                rendering::calculate_mvp(
+                    mvp, 
+                    1, 
+                    1, 
+                    c_anim.world_x, 
+                    c_anim.world_y, 
+                    0
+                );
+
+                rendering::debug_circle_shader::set_uniform_mvp(mvp);
+                rendering::debug_circle_shader::set_uniform_radius(c_anim.size);
+                rendering::debug_circle_shader::set_uniform_impulse_axis(c_anim.impulse_axis_x, c_anim.impulse_axis_y);
+                rendering::debug_circle_shader::set_uniform_circle_width(0.1f);
+
+                c_anim.size = c_anim.size + delta_time.count() * c_anim.size_setp * 10 ; 
+
+                glDrawArrays(GL_TRIANGLES, 0, rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_number);
+
+                // Draw second wave
+                rendering::debug_circle_shader::set_uniform_radius(c_anim.size-0.8);
+
+                glDrawArrays(GL_TRIANGLES, 0, rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_number);
+
+            }
+            
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
+        //=================================================================================================================
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                       RELEASE GAME SCENE FRAMEBUFFER
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                     RELEASE GAMESCENE-FRAMEBUFFER
 
-        glUseProgram(0);
-        rendering::scene_image_framebuffer::deactivate();
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                          RENDER THE EDITOR GUI
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        // ====================================================================================
-        // Setup the application Framebuffer
+        //=================================================================================================================
         
-        // Scrivi in game_scene_viewport la grandezza della finestra dell'applicazione
-        glfwGetFramebufferSize(
-            window, 
-            &rendering::application_window_viewport.pixel_width, 
-            &rendering::application_window_viewport.pixel_height
-        );
-
-        rendering::application_window_viewport.ratio = 
-            rendering::application_window_viewport.pixel_width / 
-            ((float) rendering::application_window_viewport.pixel_height);
-
-        // Specifica ad opengl la grandezza della finestra dove renderizzare
-        glViewport(
-            0, 
-            0, 
-            rendering::application_window_viewport.pixel_width, 
-            rendering::application_window_viewport.pixel_height);
-
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        // ====================================================================================
-        // Render the GUI in the application Framebuffer
-
-        gui::render_gui();
-
-        // ====================================================================================
-        // Flush application window rendering changes
-
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                                DEBUG: Print state
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        /* if (inputs::mouse_left_button == inputs::PRESS) {
-            std::cout << "Scene Image position: " << gui::parameters.scene_window.inner_img_pixel_x_pos << " " << gui::parameters.scene_window.inner_img_pixel_y_pos << std::endl << std::flush;
-            std::cout << "Click pixel position: " << inputs::mouse_last_click.pixel_x_pos << " " << inputs::mouse_last_click.pixel_y_pos << std::endl << std::flush;
-            std::cout << "Click ndc position: " << inputs::mouse_last_click.ndc_x_pos << " " << inputs::mouse_last_click.ndc_y_pos << std::endl << std::flush;
-            std::cout << "Click world position: " << inputs::mouse_last_click.world_x_pos << " " << inputs::mouse_last_click.world_y_pos << std::endl << std::flush; 
-        } */
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            glUseProgram(0);
+            rendering::scene_image_framebuffer::deactivate();
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //=================================================================================================================
+
+        //                                        SETUP DEFAULT-FRAMEBUFFER
+
+        //=================================================================================================================
+
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            // ====================================================================================
+            // Setup the application Framebuffer
+            
+            // Scrivi in game_scene_viewport la grandezza della finestra dell'applicazione
+            glfwGetFramebufferSize(
+                window, 
+                &rendering::application_window_viewport.pixel_width, 
+                &rendering::application_window_viewport.pixel_height
+            );
+
+            rendering::application_window_viewport.ratio = 
+                rendering::application_window_viewport.pixel_width / 
+                ((float) rendering::application_window_viewport.pixel_height);
+
+            // Specifica ad opengl la grandezza della finestra dove renderizzare
+            glViewport(
+                0, 
+                0, 
+                rendering::application_window_viewport.pixel_width, 
+                rendering::application_window_viewport.pixel_height);
+
+            glClear(GL_COLOR_BUFFER_BIT);
+            
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //=================================================================================================================
+
+        //                             DEFAULT-FRAMEBUFFER RENDERING: Render the editor gui
+
+        //=================================================================================================================
+        
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            
+
+            // ====================================================================================
+            // Render the GUI in the application Framebuffer
+
+            gui::render_gui();
+
+
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //=================================================================================================================
+
+        //                                        RELEASE DEFAULT-FRAMEBUFFER
+
+        //=================================================================================================================
+
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            // ====================================================================================
+            // Flush application window rendering changes
+
+            glfwSwapBuffers(window);
+            glfwPollEvents();
+
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        //=================================================================================================================
+
+        //                                         CONSOLE COUT: PRINT STATE
+
+        //=================================================================================================================
+        
+        { ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            //if (inputs::mouse_left_button == inputs::PRESS) {
+                //std::cout << "Scene Image position: " << gui::parameters.scene_window.inner_img_pixel_x_pos << " " << gui::parameters.scene_window.inner_img_pixel_y_pos << std::endl << std::flush;
+                //std::cout << "Click pixel position: " << inputs::mouse_last_click.pixel_x_pos << " " << inputs::mouse_last_click.pixel_y_pos << std::endl << std::flush;
+                //std::cout << "Click ndc position: " << inputs::mouse_last_click.ndc_x_pos << " " << inputs::mouse_last_click.ndc_y_pos << std::endl << std::flush;
+                //std::cout << "Click world position: " << inputs::mouse_last_click.world_x_pos << " " << inputs::mouse_last_click.world_y_pos << std::endl << std::flush; 
+        } ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        
+        //=================================================================================================================
+        
         //                                              MAIN LOOP END
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        //=================================================================================================================
 
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //=================================================================================================================
+
     //                                              RELEASE RESOURCES
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    gui::destroy();
+    //=================================================================================================================
+    
+    { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        gui::destroy();
 
-    glfwDestroyWindow(window);
- 
-    glfwTerminate();
-    exit(EXIT_SUCCESS);
+        glfwDestroyWindow(window);
+    
+        glfwTerminate();
+        exit(EXIT_SUCCESS);
+        
+    } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     return 0;
-
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                               NAIVE COLLISIONS ALG DEBUG
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// =========================================================================|
-//                                Physic update
-// =========================================================================|
-// Checks for collision between the shapes inside the "world_bodies" vector.
-// Populate physic::dim2::contacts vector with those collision.
-//
-void DEBUG_naive_contact_detection_alg_physic(){
 
-    // ====================================================================================
-    // Reset contact vector from eventual unresolved contacts from previous frame
-    
-    physic::dim2::contacts.clear();
-    
-    // ====================================================================================
-    // Create the list of rigidbodies on which to run the collision test
-
-    std::vector<std::pair<physic::dim2::rigidbody*, physic::dim2::collider*>> world_bodies;
-
-    // Add all box colliders
-    for(int i = 0; i < game_data::ARRAY_SIZE; i ++){
-        game_data::rigidbody_2d_box& gdrb = game_data::world_rigidbodies_2d_box[i];
-        if(gdrb.free)
-            continue;
-        world_bodies.push_back({ & (gdrb.rb), & (gdrb.coll) });
-    }
-
-    // Add all sphere colliders
-    for(int i = 0; i < game_data::ARRAY_SIZE; i ++){
-        game_data::rigidbody_2d_sphere& gdrb = game_data::world_rigidbodies_2d_sphere[i];
-        if(gdrb.free)
-            continue;
-        world_bodies.push_back({ & (gdrb.rb), & (gdrb.coll) });
-    }
-
-    // ====================================================================================
-    // Launch the dispatcher
-
-    // Populates "phyisic::dim2::contacts" vector
-    physic::dim2::contact_detection_dispatcher(world_bodies);    
-
-}
-
-// =========================================================================|
-//                               Rendering update
-// =========================================================================|
-// Renders visually the data inside the physic::dim2::contacts vector 
-//
-void DEBUG_naive_contact_detection_alg_rendering(){
-    
-    glUseProgram(rendering::debug_line_shader::program_id);
-    glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
-
-    for (auto contact : physic::dim2::contacts){
-
-        // Find QA world contact coordinates
-        mat4x4 model_matrix;
-        physic::dim2::build_model_matrix(model_matrix, contact.rb_a->pos_x, contact.rb_a->pos_y, contact.rb_a->angle );
-        vec4 world_qa;
-        vec4 local_qa = {contact.ms_qa_x, contact.ms_qa_y, 0, 1};
-        mat4x4_mul_vec4(world_qa, model_matrix, local_qa);
-
-        // Find QB world contact coordinates
-        physic::dim2::build_model_matrix(model_matrix, contact.rb_b->pos_x, contact.rb_b->pos_y, contact.rb_b->angle );
-        vec4 world_qb;
-        vec4 local_qb= {contact.ms_qb_x, contact.ms_qb_y, 0, 1};
-        mat4x4_mul_vec4(world_qb, model_matrix, local_qb);
-
-        // Render QA
-        rendering::debug_line_shader::draw_2d_point(world_qa[0],world_qa[1]);
-
-        // Render QB
-        rendering::debug_line_shader::draw_2d_point(world_qb[0],world_qb[1]);
-
-        // Render the normal (applied on QB)
-        rendering::debug_line_shader::draw_2d_line_stripe( 
-            world_qb[0],
-            world_qb[1],
-            0,
-            {0, 0, contact.ws_n_x, contact.ws_n_y}
-        );
-    
-    }
-
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                            CONTACT RESPONSE DEBUG
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// =========================================================================|
-//                               Rendering update
-// =========================================================================|
-// Renders visually the impulses caused by a contact 
-//
-
-void DEBUG_contact_solver_rendering(){
-
-    for( int i = 0; i < physic::dim2::contacts.size(); i++ ){
-        
-        physic::dim2::contact_data& contact = physic::dim2::contacts[i];
-
-        game_data::contact_circle_animations.push_back({});
-        int last_element = game_data::contact_circle_animations.size()-1;
-
-        // Find QB world contact coordinates
-        mat4x4 model_matrix;
-        physic::dim2::build_model_matrix(model_matrix, contact.rb_b->pos_x, contact.rb_b->pos_y, contact.rb_b->angle );
-        vec4 world_qb;
-        vec4 local_qb= {contact.ms_qb_x, contact.ms_qb_y, 0, 1};
-        mat4x4_mul_vec4(world_qb, model_matrix, local_qb);
-
-        game_data::contact_circle_animations[last_element].world_x = world_qb[0];
-        game_data::contact_circle_animations[last_element].world_y = world_qb[1];
-
-        game_data::contact_circle_animations[last_element].impulse_axis_x = contact.ws_n_x;
-        game_data::contact_circle_animations[last_element].impulse_axis_y = contact.ws_n_y;
-
-    }
-    
-    glUseProgram(rendering::debug_circle_shader::program_id);
-    glBindVertexArray(rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
-
-    for( int i = 0 ; i < game_data::contact_circle_animations.size(); i ++ ){
-
-        game_data::contact_circle_animation& c_anim = game_data::contact_circle_animations[i];
-
-        if(c_anim.size >= c_anim.max_size){
-            game_data::contact_circle_animations.erase( game_data::contact_circle_animations.begin() + i );
-            i--;
-            continue;
-        }
-
-        float mvp [16];
-
-        rendering::calculate_mvp(
-            mvp, 
-            1, 
-            1, 
-            c_anim.world_x, 
-            c_anim.world_y, 
-            0
-        );
-
-        rendering::debug_circle_shader::set_uniform_mvp(mvp);
-        rendering::debug_circle_shader::set_uniform_radius(c_anim.size);
-        rendering::debug_circle_shader::set_uniform_impulse_axis(c_anim.impulse_axis_x, c_anim.impulse_axis_y);
-        rendering::debug_circle_shader::set_uniform_circle_width(0.1f);
-
-        c_anim.size = c_anim.size + delta_time.count() * c_anim.size_setp * 10 ; 
-
-        glDrawArrays(GL_TRIANGLES, 0, rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_number);
-
-        // Draw second wave
-        rendering::debug_circle_shader::set_uniform_radius(c_anim.size-0.8);
-
-        glDrawArrays(GL_TRIANGLES, 0, rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_number);
-
-    }
-}
 
 
 

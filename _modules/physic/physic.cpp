@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                 UTILITY
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -227,28 +228,28 @@ std::vector<physic::dim2::contact_data> physic::dim2::contacts;
 //
 // This function deals with both the broad phase and the narrow phase.
 //
-void physic::dim2::contact_detection_dispatcher(std::vector<std::pair<rigidbody*, collider*>>& world_bodies){
+void physic::dim2::contact_detection_dispatcher(std::vector<std::pair<rigidbody*, collider*>>& bodies){
 
-    if(world_bodies.size()<= 1)
+    if(bodies.size()<= 1)
         return;
     
     // ------------------------------------------------------------------------------------
     // Define how to loop the world_bodies vector
 
     // For each element in the vector..
-    for(int i = 0; i < world_bodies.size()-1; i ++){
+    for(int i = 0; i < bodies.size()-1; i ++){
 
         // ..step in all the elements with higher position in the vector 
-        for(int j = i+1; j < world_bodies.size(); j++ ){
+        for(int j = i+1; j < bodies.size(); j++ ){
             
             // ------------------------------------------------------------------------------------
             // Data
 
             // References to the world bodies
-            rigidbody& A = *(world_bodies[i].first);
-            collider& coll_A = *(world_bodies[i].second);
-            rigidbody& B = *(world_bodies[j].first);
-            collider& coll_B = *(world_bodies[j].second);
+            rigidbody& A = *(bodies[i].first);
+            collider& coll_A = *(bodies[i].second);
+            rigidbody& B = *(bodies[j].first);
+            collider& coll_B = *(bodies[j].second);
 
             // Eventual new contact between the shapes
             contact_data new_contact;

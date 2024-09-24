@@ -2,16 +2,13 @@
 #include "game_data.h"
 #include <iostream>
 
-std::map<int, game_data::box_gameobject> game_data::world_gameobjects_box;
-std::map<int, game_data::sphere_gameobject> game_data::world_gameobjects_sphere;
-game_data::rigidbody_2d_box game_data::world_rigidbodies_2d_box [game_data::ARRAY_SIZE];
-game_data::rigidbody_2d_sphere game_data::world_rigidbodies_2d_sphere [game_data::ARRAY_SIZE];
+std::vector<game_data::BoxGameObject> game_data::boxGameobjects;
+std::vector<game_data::SphereGameObject> game_data::sphereGameobjects;
 
 bool game_data::event_is_dragging_active = false;
-int game_data::dragged_game_object_id = 0;
+game_data::AliasGameObject game_data::draggedGameObject;
 
-int next_box_id = 0;
-int next_sphere_id = 0;
+int next_gameobject_id;
 
 /* std::map<int, physic::impulse> game_data::starting_impulses; */
 
@@ -23,31 +20,19 @@ std::vector<game_data::contact_circle_animation> game_data::contact_circle_anima
 
 void game_data::AddBoxGameObject(){
 
-    // ------------------------------------------------------------------------------------
-    // Instantiate the new game object
-
-    world_gameobjects_box.insert( {next_box_id, {}} );
-    //box_rigidbodies.insert( {next_box_rb_id, {}} );
-
-    // Find a free slot for the new box gameobject rigidbody
-    int rb_index;
-    for(rb_index = 0; rb_index < ARRAY_SIZE; rb_index++){
-        if ( world_rigidbodies_2d_box[rb_index].free)
-            break;
-    }
-    assert( rb_index>=0 && rb_index< ARRAY_SIZE );
-    world_rigidbodies_2d_box[rb_index].free = false;
+    boxGameobjects.push_back({});
 
     // ------------------------------------------------------------------------------------
-    // Setup the new object data
+    // Initialize the new object data
 
     // Setup Gameobject fields
-    box_gameobject& game_object = world_gameobjects_box.at(next_box_id);
-    game_object.rigidbody_2d_box_id = rb_index;
-    game_object.render_outline = false;
+    BoxGameObject& box_go = boxGameobjects[boxGameobjects.size()-1];
+    
+    box_go.gameobject_id = next_gameobject_id;
+    box_go.render_outline = false;
 
     // Setup Gameobject box rigidbody
-    physic::dim2::rigidbody & rb = world_rigidbodies_2d_box[rb_index].rb;
+    physic::dim2::rigidbody& rb = box_go.rb;
     rb.angle = 0;
     rb.I = 1;
     rb.m = 1;
@@ -58,42 +43,31 @@ void game_data::AddBoxGameObject(){
     rb.w = 0;
 
     // Setup Gameobject box collider
-    physic::dim2::collider_box & coll = world_rigidbodies_2d_box[rb_index].coll;
+    physic::dim2::collider_box & coll = box_go.coll;
     coll.width = 1;
     coll.height = 1;
     
     // ------------------------------------------------------------------------------------
     // Increase the counter for game objects ids:
     
-    next_box_id++;
+    next_gameobject_id++;
 }
 
 void game_data::AddSphereGameObject(){
 
-    // ------------------------------------------------------------------------------------
-    // Instantiate the new game object
-
-    world_gameobjects_sphere.insert( {next_sphere_id, {}} );
-    //box_rigidbodies.insert( {next_box_rb_id, {}} );
-
-    // Find a free slot for the new box gameobject rigidbody
-    int rb_index;
-    for(rb_index = 0; rb_index < ARRAY_SIZE; rb_index++){
-        if ( world_rigidbodies_2d_sphere[rb_index].free)
-            break;
-    }
-    assert( rb_index>=0 && rb_index< ARRAY_SIZE );
-    world_rigidbodies_2d_sphere[rb_index].free = false;
+    sphereGameobjects.push_back({});
 
     // ------------------------------------------------------------------------------------
-    // Setup the new object data
+    // Initialize the new object data
 
     // Setup Gameobject fields
-    sphere_gameobject& game_object = world_gameobjects_sphere.at(next_sphere_id);
-    game_object.rigidbody_2d_sphere_id = rb_index;
+    SphereGameObject& sphere_go = sphereGameobjects[sphereGameobjects.size()-1];
+    
+    sphere_go.gameobject_id = next_gameobject_id;
+    sphere_go.render_outline = false;
 
     // Setup Gameobject box rigidbody
-    physic::dim2::rigidbody & rb = world_rigidbodies_2d_sphere[rb_index].rb;
+    physic::dim2::rigidbody& rb = sphere_go.rb;
     rb.angle = 0;
     rb.I = 1;
     rb.m = 1;
@@ -104,12 +78,11 @@ void game_data::AddSphereGameObject(){
     rb.w = 0;
 
     // Setup Gameobject box collider
-    physic::dim2::collider_sphere & coll = world_rigidbodies_2d_sphere[rb_index].coll;
+    physic::dim2::collider_sphere & coll = sphere_go.coll;
     coll.radius = 0.5;
     
     // ------------------------------------------------------------------------------------
     // Increase the counter for game objects ids:
     
-    next_sphere_id++;
-    std::cout << " CREATED NEW CIRCLE OBJECT " << std::endl << std::flush;
+    next_gameobject_id++;
 }

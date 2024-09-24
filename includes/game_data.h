@@ -11,74 +11,71 @@
 
 namespace game_data{
 
+    //=================================================================================================================
+
+    //                                            GAME OBJECTS DEFINITION
+
+    //=================================================================================================================
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                    GAME OBJECTS AND COMPONENTS DECLARATIONS
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // ====================================================================================
-    //                                    Components
-    // Used as support for Gameojbect Prefabs definition
+    struct BoxGameObject{
+        int gameobject_id;
 
-    // ------------------------------------------------------------------------------------
-    // Transforms
+        bool render_outline;
 
-    struct transform_2d{
         float world_x_scale = 1;
         float world_y_scale = 1;
         float world_x_pos = 0;
         float world_y_pos = 0;
-        float world_z_angle = 0;
-    };
+        float world_z_angle = 0;   
 
-    // ------------------------------------------------------------------------------------
-    // Rigidbodies
-
-    struct rigidbody_2d_box{
         physic::dim2::rigidbody rb;
         physic::dim2::collider_box coll;
-        bool free = true;                               // Specify if the memory slot is active or not
+        
     };
 
-    struct rigidbody_2d_sphere{
+    struct SphereGameObject{
+        int gameobject_id;
+
+        bool render_outline;
+
+        float world_x_scale = 1;
+        float world_y_scale = 1;
+        float world_x_pos = 0;
+        float world_y_pos = 0;
+        float world_z_angle = 0;   
+
         physic::dim2::rigidbody rb;
         physic::dim2::collider_sphere coll;
-        bool free = true;                               // Specify if the memory slot is active or not
-    };
-    
-    struct rigidbody_2d_halfspace{
-        physic::dim2::rigidbody rb;
-        physic::dim2::collider_halfspace coll;
+
     };
 
-    // ====================================================================================
-    //                                Gameobjects Prefabs
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // ------------------------------------------------------------------------------------
+    //=================================================================================================================
+
+    //                                          GAME OBJECTS MEMORY
+
+    //=================================================================================================================
     // Box Gameobject
     
-    struct box_gameobject{
-        transform_2d transform_2d;
-        int rigidbody_2d_box_id;
-        bool render_outline;
-    };
+    extern std::vector<BoxGameObject> boxGameobjects;
 
-    // Add a box_gameobject to the world_gameobjects_box map by building the correct 
-    // dependencies between the components
     void AddBoxGameObject();
 
     // ------------------------------------------------------------------------------------
     // Sphere Gameobject
 
-    struct sphere_gameobject{
-        transform_2d transform_2d;
-        int rigidbody_2d_sphere_id;
-    };
+    extern std::vector<SphereGameObject> sphereGameobjects;
 
     void AddSphereGameObject();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                       UTILITY GAME DATA DECLARATIONS
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // ====================================================================================
+    // Contact circle animation
 
     struct contact_circle_animation{
         float world_x, world_y;
@@ -89,42 +86,35 @@ namespace game_data{
         float impulse_axis_y = 0;
     };
 
+    extern std::vector<contact_circle_animation> contact_circle_animations;
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                           GAME DATA DEFINITION
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // ====================================================================================
-    // Game objects data
-
-    const int ARRAY_SIZE = 10;
-
-    // Stores all the box rigidbodies in the game
-    extern rigidbody_2d_box world_rigidbodies_2d_box [ARRAY_SIZE];
-
-    // Stores all the sphere rigidbodies in the game
-    extern rigidbody_2d_sphere world_rigidbodies_2d_sphere [ARRAY_SIZE];
-
-    // Stores all the halfspace rigidbodies in the game
-    extern rigidbody_2d_halfspace world_rigidbodies_2d_halfspace [ARRAY_SIZE];
-
-    // Stores all the box gameobjects in the game
-    extern std::map<int, box_gameobject> world_gameobjects_box;
-
-    // Stores all the sphere gameobjects in the game
-    extern std::map<int, sphere_gameobject> world_gameobjects_sphere;
-
-    // ====================================================================================
-    // Data for simulation starting impulses
-
-    // Binds a rigid box id to an impulse to be applied on it
-    /* extern std::map<int, physic::impulse> starting_impulses; */
-
-    // ====================================================================================
     // Data for 2d boxes dragging event
 
     extern bool event_is_dragging_active;
-    extern int dragged_game_object_id;
 
+    struct AliasGameObject{
+        int* gameobject_id = nullptr;
+
+        bool* render_outline = nullptr;
+
+        float* world_x_scale = nullptr;
+        float* world_y_scale = nullptr;
+        float* world_x_pos = nullptr;
+        float* world_y_pos = nullptr;
+        float* world_z_angle = nullptr;   
+
+        physic::dim2::rigidbody* rb = nullptr;
+        physic::dim2::collider* coll = nullptr;
+
+    };
+
+    extern AliasGameObject draggedGameObject;
+    
     // ====================================================================================
     // Data for managing simulation running
     
@@ -132,10 +122,9 @@ namespace game_data{
     extern GLuint sim_pause_button_texture_id;
     extern bool is_simulation_running;
 
-    // ====================================================================================
-    // Contact circle animation
 
-    extern std::vector<contact_circle_animation> contact_circle_animations;
+
+    
 
 
 }

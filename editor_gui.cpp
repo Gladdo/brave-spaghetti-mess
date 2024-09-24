@@ -10,9 +10,8 @@
 //                                                  GUI
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int gui::game_object_list_selected_element_id = -1;
-enum gameobject_type {BOX, SPHERE};
-gameobject_type game_object_list_selected_element_type;
+game_data::AliasGameObject selected_go;
+
 gui::gui_parameters gui::parameters;
 
 // =========================================================================|
@@ -84,37 +83,43 @@ void gui::render_gui(){
 
         ImGui::BeginChild("ResizableChild", ImVec2(-FLT_MIN, ImGui::GetTextLineHeightWithSpacing() * 8), ImGuiChildFlags_Border | ImGuiChildFlags_ResizeY);
         {
-            // Iterate over all the world gameobjects
-            for (auto& el : game_data::world_gameobjects_box){
-
-                int box_go_id = el.first;
-                game_data::box_gameobject& box_go = el.second;
+            // Iterate over all the world box gameobjects
+            for (auto& box_go : game_data::boxGameobjects){
 
                 // Create a button with the current game object id; if selected, set game_object_list_selected_element_id
-                std::string text = "Box game object id: " + std::to_string(box_go_id);
+                std::string text = "Box game object id: " + std::to_string(box_go.gameobject_id);
                 if (ImGui::Button(text.c_str())) {
-                    game_object_list_selected_element_id = box_go_id;
-                    game_object_list_selected_element_type = BOX;
+                    
+                    selected_go.world_x_pos = &box_go.world_x_pos;
+                    selected_go.world_x_scale = &box_go.world_x_scale;
+                    selected_go.world_y_pos = &box_go.world_y_pos;
+                    selected_go.world_y_scale = &box_go.world_y_scale;
+                    selected_go.world_z_angle = &box_go.world_z_angle;
+                    selected_go.rb = &box_go.rb;
+                    selected_go.coll = &box_go.coll;
+                    selected_go.gameobject_id = &box_go.gameobject_id;
+
                 }
 
             }
 
-            // Iterate over all the world gameobjects
-            for (auto& el : game_data::world_gameobjects_sphere){
-
-                int sphere_go_id = el.first;
-                game_data::sphere_gameobject& sphere_go = el.second;
+            // Iterate over all the world sphere gameobjects
+            for (auto& sphere_go : game_data::sphereGameobjects){
 
                 // Create a button with the current game object id; if selected, set game_object_list_selected_element_id
-                std::string text = "Sphere game object id: " + std::to_string(sphere_go_id);
+                std::string text = "Sphere game object id: " + std::to_string(sphere_go.gameobject_id);
                 if (ImGui::Button(text.c_str())) {
-                    game_object_list_selected_element_id = sphere_go_id;
-                    game_object_list_selected_element_type = SPHERE;
+                    selected_go.world_x_pos = &sphere_go.world_x_pos;
+                    selected_go.world_x_scale = &sphere_go.world_x_scale;
+                    selected_go.world_y_pos = &sphere_go.world_y_pos;
+                    selected_go.world_y_scale = &sphere_go.world_y_scale;
+                    selected_go.world_z_angle = &sphere_go.world_z_angle;
+                    selected_go.rb = &sphere_go.rb;
+                    selected_go.coll = &sphere_go.coll;
+                    selected_go.gameobject_id = &sphere_go.gameobject_id;
                 }
 
             }
-
-
 
         }
         ImGui::EndChild();
@@ -128,7 +133,7 @@ void gui::render_gui(){
         // If game object dragging is active, inspect the dragged gameobject
 
         if (game_data::event_is_dragging_active) {
-            game_object_list_selected_element_id = game_data::dragged_game_object_id;
+            selected_go = game_data::draggedGameObject;
         } 
 
         // ====================================================================================
@@ -139,17 +144,9 @@ void gui::render_gui(){
         ImGui::Indent();
         
         // Inspect only if a selected element exists
-        if(game_object_list_selected_element_id>=0 && game_object_list_selected_element_type == BOX)
+        if(selected_go.gameobject_id != nullptr)
         {
             
-            // ====================================================================================
-            // Reference to inspected data
-
-            game_data::box_gameobject& box_go = game_data::world_gameobjects_box[game_object_list_selected_element_id];
-            game_data::transform_2d& t = box_go.transform_2d;
-            physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_box[box_go.rigidbody_2d_box_id].rb;
-            physic::dim2::collider_box& coll = game_data::world_rigidbodies_2d_box[box_go.rigidbody_2d_box_id].coll;
-
             // ====================================================================================
             // Transform data
 
@@ -161,13 +158,13 @@ void gui::render_gui(){
             static float t_pos_ui[2] = { 0.0f, 0.0f};
 
             if(ImGui::InputFloat3("X-Y-Z", t_pos_ui)){
-                t.world_x_pos = t_pos_ui[0];
-                t.world_y_pos = t_pos_ui[1];
-                rb.pos_x = t_pos_ui[0];
-                rb.pos_y = t_pos_ui[1];
+                *selected_go.world_x_pos = t_pos_ui[0];
+                *selected_go.world_y_pos = t_pos_ui[1];
+                selected_go.rb->pos_x = t_pos_ui[0];
+                selected_go.rb->pos_y = t_pos_ui[1];
             }else{
-                t_pos_ui[0] = t.world_x_pos;
-                t_pos_ui[1] = t.world_y_pos;
+                t_pos_ui[0] = *selected_go.world_x_pos;
+                t_pos_ui[1] = *selected_go.world_y_pos;
             }
 
             // ------------------------------------------------------------------------------------
@@ -178,26 +175,49 @@ void gui::render_gui(){
             if(ImGui::SliderFloat("Angle", &slider_f, 0.0f, 360.0f, "%.3f", flags))
             {
                 float rad_angle = slider_f * (2.0f * 3.14 / 360.0f);
-                t.world_z_angle = rad_angle;
-                rb.angle = rad_angle;
+                *selected_go.world_z_angle = rad_angle;
+                selected_go.rb->angle = rad_angle;
             }else{
-                slider_f = t.world_z_angle / (2.0f * 3.14 / 360.0f);
+                slider_f = *selected_go.world_z_angle / (2.0f * 3.14 / 360.0f);
             }
 
             // ------------------------------------------------------------------------------------
             // Scale
 
-            static float t_size_ui[2] = { 0.0f, 0.0f};
+            // IF HAS BOX COLLIDER
+            if(selected_go.coll->type == physic::dim2::collider::BOX){
+                
+                static float t_size_ui[2] = { 0.0f, 0.0f};
 
-            if(ImGui::InputFloat2("Scale", t_size_ui)){
-                t.world_x_scale = t_size_ui[0];
-                t.world_y_scale = t_size_ui[1];
-                coll.width = t_size_ui[0];
-                coll.height = t_size_ui[1];
-            }else{
-                t_size_ui[0] = t.world_x_scale;
-                t_size_ui[1] = t.world_y_scale;
+                if(ImGui::InputFloat2("Scale", t_size_ui)){
+                    *selected_go.world_x_scale = t_size_ui[0];
+                    *selected_go.world_y_scale = t_size_ui[1];
+                    ((physic::dim2::collider_box*) selected_go.coll)->width  = t_size_ui[0];
+                    ((physic::dim2::collider_box*) selected_go.coll)->height = t_size_ui[1];
+                }else{
+                    t_size_ui[0] = *selected_go.world_x_scale;
+                    t_size_ui[1] = *selected_go.world_y_scale;
+                }
+
             }
+
+            // IF HAS SPHERE COLLIDER
+
+            if(selected_go.coll->type == physic::dim2::collider::SPHERE){
+                
+                static float r_size_ui;
+
+                if(ImGui::InputFloat("Scale", &r_size_ui)){
+                    *selected_go.world_x_scale = r_size_ui;
+                    *selected_go.world_y_scale = r_size_ui;
+                    ((physic::dim2::collider_sphere*) selected_go.coll)->radius  = r_size_ui;
+     
+                }else{
+                    r_size_ui = ((physic::dim2::collider_sphere*) selected_go.coll)->radius;
+                }
+
+            }
+
 
             // ====================================================================================
             // Rigidbody data
@@ -209,11 +229,11 @@ void gui::render_gui(){
             static float rb_vel_ui[2] = { 0.0f, 0.0f};
 
             if(ImGui::InputFloat2("X-Y vel", rb_vel_ui)){
-                rb.vel_x = rb_vel_ui[0];
-                rb.vel_y = rb_vel_ui[1];
+                selected_go.rb->vel_x = rb_vel_ui[0];
+                selected_go.rb->vel_y = rb_vel_ui[1];
             }else{
-                rb_vel_ui[0] = rb.vel_x;
-                rb_vel_ui[1] = rb.vel_y;
+                rb_vel_ui[0] = selected_go.rb->vel_x;
+                rb_vel_ui[1] = selected_go.rb->vel_y;
             }
 
             // ------------------------------------------------------------------------------------
@@ -222,9 +242,9 @@ void gui::render_gui(){
             static float rb_w_ui;
 
             if(ImGui::InputFloat("w", &rb_w_ui)){
-                rb.w = rb_w_ui;
+                selected_go.rb->w = rb_w_ui;
             }else{
-                rb_w_ui = rb.w;
+                rb_w_ui = selected_go.rb->w;
             }
 
             // ------------------------------------------------------------------------------------
@@ -233,9 +253,9 @@ void gui::render_gui(){
             static float rb_m_ui;
 
             if(ImGui::InputFloat("Mass", &rb_m_ui)){
-                rb.m = rb_m_ui;
+                selected_go.rb->m = rb_m_ui;
             }else{
-                rb_m_ui = rb.m;
+                rb_m_ui = selected_go.rb->m;
             }
 
             // ------------------------------------------------------------------------------------
@@ -244,9 +264,9 @@ void gui::render_gui(){
             static float rb_i_ui;
 
             if(ImGui::InputFloat("Moment", &rb_i_ui)){
-                rb.I = rb_i_ui;
+                selected_go.rb->I = rb_i_ui;
             }else{
-                rb_i_ui = rb.I;
+                rb_i_ui = selected_go.rb->I;
             }
 
 
@@ -291,119 +311,8 @@ void gui::render_gui(){
             
         }
             
-        if(game_object_list_selected_element_id>=0 && game_object_list_selected_element_type == SPHERE)
-        {
-            
-            // ====================================================================================
-            // Reference to inspected data
-
-            game_data::sphere_gameobject & sphere_go = game_data::world_gameobjects_sphere[game_object_list_selected_element_id];
-            game_data::transform_2d& t = sphere_go.transform_2d;
-            physic::dim2::rigidbody& rb = game_data::world_rigidbodies_2d_sphere[sphere_go.rigidbody_2d_sphere_id].rb;
-            physic::dim2::collider_sphere& coll = game_data::world_rigidbodies_2d_sphere[sphere_go.rigidbody_2d_sphere_id].coll;
-
-            // ====================================================================================
-            // Transform data
-
-            ImGui::BulletText("Transform");
-
-            // ------------------------------------------------------------------------------------
-            // Position
-
-            static float t_pos_ui[2] = { 0.0f, 0.0f};
-
-            if(ImGui::InputFloat3("X-Y-Z", t_pos_ui)){
-                t.world_x_pos = t_pos_ui[0];
-                t.world_y_pos = t_pos_ui[1];
-                rb.pos_x = t_pos_ui[0];
-                rb.pos_y = t_pos_ui[1];
-            }else{
-                t_pos_ui[0] = t.world_x_pos;
-                t_pos_ui[1] = t.world_y_pos;
-            }
-
-            // ------------------------------------------------------------------------------------
-            // Angle
-
-            static float slider_f;
-            static ImGuiSliderFlags flags = ImGuiSliderFlags_None;
-            if(ImGui::SliderFloat("Angle", &slider_f, 0.0f, 360.0f, "%.3f", flags))
-            {
-                float rad_angle = slider_f * (2.0f * 3.14 / 360.0f);
-                t.world_z_angle = rad_angle;
-                rb.angle = rad_angle;
-            }else{
-                slider_f = t.world_z_angle / (2.0f * 3.14 / 360.0f);
-            }
-
-            // ------------------------------------------------------------------------------------
-            // Scale
-
-            static float r_size_ui = 0.0f;
-
-            if(ImGui::InputFloat("Radius", &r_size_ui)){
-                t.world_x_scale = r_size_ui;
-                t.world_y_scale = r_size_ui;
-                coll.radius = r_size_ui;
-            }else{
-                r_size_ui = coll.radius;
-            }
-
-            // ====================================================================================
-            // Rigidbody data
-            ImGui::BulletText("Rigidbody");
-
-            // ------------------------------------------------------------------------------------
-            // Velocity
-            
-            static float rb_vel_ui[2] = { 0.0f, 0.0f};
-
-            if(ImGui::InputFloat2("X-Y vel", rb_vel_ui)){
-                rb.vel_x = rb_vel_ui[0];
-                rb.vel_y = rb_vel_ui[1];
-            }else{
-                rb_vel_ui[0] = rb.vel_x;
-                rb_vel_ui[1] = rb.vel_y;
-            }
-
-            // ------------------------------------------------------------------------------------
-            // Angular Velocity
-
-            static float rb_w_ui;
-
-            if(ImGui::InputFloat("w", &rb_w_ui)){
-                rb.w = rb_w_ui;
-            }else{
-                rb_w_ui = rb.w;
-            }
-
-            // ------------------------------------------------------------------------------------
-            // Mass
-
-            static float rb_m_ui;
-
-            if(ImGui::InputFloat("Mass", &rb_m_ui)){
-                rb.m = rb_m_ui;
-            }else{
-                rb_m_ui = rb.m;
-            }
-
-            // ------------------------------------------------------------------------------------
-            // Inertia Moment
-
-            static float rb_i_ui;
-
-            if(ImGui::InputFloat("Moment", &rb_i_ui)){
-                rb.I = rb_i_ui;
-            }else{
-                rb_i_ui = rb.I;
-            }
-            
-        }    
-            
         ImGui::EndChild();
 
-        
     }
     ImGui::End();
 
