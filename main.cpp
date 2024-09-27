@@ -351,6 +351,24 @@ int main(void){
                 }
             } 
 
+            // BOX-HALFSPACE DISPATCH
+
+            if(game_data::boxGameobjects.size() != 0 && game_data::halfSpaceGameobjects.size() != 0){
+                for(int i = 0; i < game_data::boxGameobjects.size(); i ++){
+                    for(int j = 0; j < game_data::halfSpaceGameobjects.size(); j++){
+
+                        game_data::BoxGameObject& box = game_data::boxGameobjects[i];
+                        game_data::HalfSpaceGameObject& halfspace = game_data::halfSpaceGameobjects[j];
+
+                        physic::dim2::contact_data new_contact = physic::dim2::generate_boxhalfspace_contactdata(box.rb, box.coll, halfspace.coll);
+
+                        if (new_contact.pen > 0){
+                            physic::dim2::contacts.push_back(new_contact);
+                        }
+                    }
+                }
+            }
+
             // SPHERE-HALFSPACE DISPATCH
 
             if ( game_data::sphereGameobjects.size() != 0 && game_data::halfSpaceGameobjects.size() != 0)

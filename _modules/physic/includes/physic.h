@@ -144,7 +144,8 @@ namespace physic{
 
         // ------------------------------------------------------------------------------------
         // BOX-HALFSPACE
-        //contact_data generate_boxhalfspace_contactdata(rigidbody& B, rigidbody& H, collider_box& coll_B, collider_halfspace& coll_H);
+        contact_data generate_pointhalfspace_contactdata(float ws_point_x, float ws_point_y, collider_halfspace& coll_H);
+        contact_data generate_boxhalfspace_contactdata(rigidbody& B, collider_box& coll_B, collider_halfspace& coll_H);
 
         // ------------------------------------------------------------------------------------
         // BOX-BOX Contact generation functions
