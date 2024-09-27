@@ -80,11 +80,19 @@ namespace physic{
 
         struct collider_halfspace : collider{
             collider_halfspace(){ type = HALFSPACE; };
+            float normal_x, normal_y;
+            float origin_offset;
         };
 
         // ====================================================================================
         // Collision detection functions:
         
+        bool check_pointsphere_collision(
+            float point_x, float point_y,
+            float sphere_x, float sphere_y,
+            float radius
+        );
+
         bool check_pointbox_collision(
             float point_x, float point_y,                           // Position of the point
             float box_x, float box_y, float box_zangle,             // Position of the box
@@ -124,15 +132,15 @@ namespace physic{
 
         // ------------------------------------------------------------------------------------
         // SPHERE-SPHERE
-        contact_data generate_spheresphere_contactdata_norotation(rigidbody& S, rigidbody& B, collider_sphere& coll_S, collider_sphere& coll_B);
+        contact_data generate_spheresphere_contactdata_norotation(rigidbody& A, rigidbody& B, collider_sphere& coll_A, collider_sphere& coll_B);
 
         // ------------------------------------------------------------------------------------
         // SPHERE-BOX
-        //contact_data generate_spheresphere_contactdata(rigidbody& S, rigidbody& B, collider_sphere& coll_S, collider_box& coll_B);
+        contact_data generate_spherebox_contactdata_norotation(rigidbody& S, rigidbody& B, collider_sphere& coll_S, collider_box& coll_B);
 
         // ------------------------------------------------------------------------------------
         // SPHERE-HALFSPACE
-        //contact_data generate_spherehalfspace_contactdata(rigidbody& B, rigidbody& H, collider_sphere& coll_B, collider_halfspace& coll_H);
+        contact_data generate_spherehalfspace_contactdata(rigidbody& S, collider_sphere& coll_S, collider_halfspace& coll_H);
 
         // ------------------------------------------------------------------------------------
         // BOX-HALFSPACE

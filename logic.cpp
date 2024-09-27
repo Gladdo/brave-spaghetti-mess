@@ -20,6 +20,8 @@ inputs::multi_coord_position inputs::mouse_last_click;
 inputs::button_state inputs::mouse_left_button = inputs::IDLE;
 inputs::button_state inputs::simulation_run_frame_button = inputs::IDLE;
 inputs::button_state inputs::simulation_run_toggle_button = inputs::IDLE;
+inputs::button_state inputs::stash_scenario_configuration_button = inputs::IDLE;
+inputs::button_state inputs::load_stashed_scenario_configuration_button = inputs::IDLE;
 
 bool inputs::check_if_click_is_on_scene(){
 
@@ -200,6 +202,48 @@ void inputs::update(){
 
     if( (simulation_run_toggle_button == PRESS || simulation_run_toggle_button == HOLD) && ob_state == GLFW_RELEASE){
         simulation_run_toggle_button = RELEASE; 
+    } 
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    // Stash scenario configuration button
+
+    int kb_state = glfwGetKey(window, GLFW_KEY_K);
+
+    if( stash_scenario_configuration_button == RELEASE){
+        stash_scenario_configuration_button = IDLE;
+    }
+
+    if ( stash_scenario_configuration_button == PRESS && kb_state == GLFW_PRESS){
+        stash_scenario_configuration_button = HOLD;
+    }
+
+    if ( stash_scenario_configuration_button == IDLE && kb_state == GLFW_PRESS){
+        stash_scenario_configuration_button = PRESS;
+    }
+
+    if( (stash_scenario_configuration_button == PRESS || stash_scenario_configuration_button == HOLD) && kb_state == GLFW_RELEASE){
+        stash_scenario_configuration_button = RELEASE; 
+    } 
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    // Load stashed scenario configuration button
+
+        int lb_state = glfwGetKey(window, GLFW_KEY_L);
+
+    if( load_stashed_scenario_configuration_button == RELEASE){
+        load_stashed_scenario_configuration_button = IDLE;
+    }
+
+    if ( load_stashed_scenario_configuration_button == PRESS && lb_state == GLFW_PRESS){
+        load_stashed_scenario_configuration_button = HOLD;
+    }
+
+    if ( load_stashed_scenario_configuration_button == IDLE && lb_state == GLFW_PRESS){
+        load_stashed_scenario_configuration_button = PRESS;
+    }
+
+    if( (load_stashed_scenario_configuration_button == PRESS || load_stashed_scenario_configuration_button == HOLD) && lb_state == GLFW_RELEASE){
+        load_stashed_scenario_configuration_button = RELEASE; 
     } 
 
     

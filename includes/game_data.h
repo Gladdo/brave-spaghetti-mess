@@ -50,6 +50,11 @@ namespace game_data{
 
     };
 
+    struct HalfSpaceGameObject{
+        int gameobject_id;
+        physic::dim2::collider_halfspace coll;
+    };
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //=================================================================================================================
@@ -60,6 +65,7 @@ namespace game_data{
     // Box Gameobject
     
     extern std::vector<BoxGameObject> boxGameobjects;
+    extern std::vector<BoxGameObject> stashedBoxGameobjects;
 
     void AddBoxGameObject();
 
@@ -67,8 +73,17 @@ namespace game_data{
     // Sphere Gameobject
 
     extern std::vector<SphereGameObject> sphereGameobjects;
+    extern std::vector<SphereGameObject> stashedSphereGameobjects;
 
     void AddSphereGameObject();
+
+    // ------------------------------------------------------------------------------------
+    // Halfspace Gameobjects
+
+    extern std::vector<HalfSpaceGameObject> halfSpaceGameobjects;
+    extern std::vector<HalfSpaceGameObject> stashedHalfSpaceGameobjects;
+
+    void AddHalfspaceObject();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                       UTILITY GAME DATA DECLARATIONS
@@ -121,6 +136,12 @@ namespace game_data{
     extern GLuint sim_play_button_texture_id;
     extern GLuint sim_pause_button_texture_id;
     extern bool is_simulation_running;
+
+    // ====================================================================================
+    // Data for configuration on main flow control
+
+    extern bool debug_draw_contact_data;
+    extern bool debug_draw_impulses;
 
 
 

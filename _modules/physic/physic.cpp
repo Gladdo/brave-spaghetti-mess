@@ -147,6 +147,29 @@ void physic::dim2::apply_impulse(rigidbody& rb, impulse impulse){
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // =========================================================================|
+//                         check_pointsphere_collision
+// =========================================================================|
+
+bool physic::dim2::check_pointsphere_collision(
+    float point_x, float point_y,
+    float sphere_x, float sphere_y,
+    float radius
+){
+
+    float segment_x = point_x-sphere_x;
+    float segment_y = point_y-sphere_y;
+
+    float segment_length = segment_x*segment_x + segment_y*segment_y;
+
+    if (segment_length < (radius*radius)) {
+        return true;
+    }
+
+    return false;
+
+}
+
+// =========================================================================|
 //                         check_pointbox_collision
 // =========================================================================|
 // Return either true or false if the point is inside the box defined by the
@@ -287,6 +310,40 @@ void physic::dim2::contact_detection_dispatcher(std::vector<std::pair<rigidbody*
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//             COLLISION DETECTION: CONTACT GENERATION - Halfspace contact generation algorithms
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+physic::dim2::contact_data physic::dim2::generate_spherehalfspace_contactdata(rigidbody& S, collider_sphere& coll_S, collider_halfspace& coll_H){
+    contact_data contact;
+    contact.pen = 0;
+
+    float projection = S.pos_x * coll_H.normal_x + S.pos_y * coll_H.normal_y - coll_H.origin_offset;
+
+    if ( projection > coll_S.radius ) {
+        return contact;
+    }
+
+    // Contact point on sphere can be found just by opposite of plane normal * radius
+    contact.ms_qa_x = - coll_H.normal_x * coll_S.radius;
+    contact.ms_qa_y = - coll_H.normal_y * coll_S.radius;
+
+    // Plane has no contact to process since it is static
+    contact.ms_qb_x = 0;
+    contact.ms_qb_y = 0;
+
+    contact.pen = coll_S.radius - projection;
+    contact.rb_a = &S;
+    contact.rb_b = nullptr;
+
+    contact.ws_n_x = coll_H.normal_x;
+    contact.ws_n_y = coll_H.normal_y;
+
+    return contact;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //             COLLISION DETECTION: CONTACT GENERATION - Sphere contact generation algorithms
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -308,8 +365,6 @@ physic::dim2::contact_data physic::dim2::generate_spheresphere_contactdata_norot
     if (distance > (coll_A.radius + coll_B.radius))
         return contact;
 
-    
-
     // Contact normal:
     vec2 normal = { conjunction[0] / distance, conjunction[1] / distance };
     
@@ -323,6 +378,71 @@ physic::dim2::contact_data physic::dim2::generate_spheresphere_contactdata_norot
     contact.rb_b = &B;
     contact.ws_n_x = normal[0];
     contact.ws_n_y = normal[1];
+
+    return contact;
+
+}
+
+physic::dim2::contact_data physic::dim2::generate_spherebox_contactdata_norotation(rigidbody& S, rigidbody& B, collider_sphere& coll_S, collider_box& coll_B){
+
+    contact_data contact;
+    contact.pen = 0;
+
+    // ------------------------------------------------------------------------------------
+    // Build the box model matrix
+    
+    mat4x4 box_model_matrix;
+    mat4x4 box_inv_model_matrix;
+    build_model_matrix(box_model_matrix, B.pos_x, B.pos_y, B.angle);
+    mat4x4_invert(box_inv_model_matrix, box_model_matrix);
+
+    // ------------------------------------------------------------------------------------
+    // Transform sphere center point to box modelspace coordinates
+
+    vec4 ws_sphere_center = {S.pos_x, S.pos_y, 0, 1};
+    vec4 ms_sphere_center;
+    mat4x4_mul_vec4(ms_sphere_center, box_inv_model_matrix, ws_sphere_center);
+    float ms_sphere_center_x = ms_sphere_center[0];
+    float ms_sphere_center_y = ms_sphere_center[1];
+
+    // ------------------------------------------------------------------------------------
+    // Find the closest point on the box from the sphere center by clamping the coordinates
+
+    float ms_closest_point_x = std::min( coll_B.width/2, std::max( -coll_B.width/2 , ms_sphere_center_x ) );
+    float ms_closest_point_y = std::min( coll_B.height/2, std::max( -coll_B.height/2, ms_sphere_center_y));
+
+    // ------------------------------------------------------------------------------------
+    // Find the distance
+
+    vec2 conjunctor = { ms_sphere_center_x - ms_closest_point_x, ms_sphere_center_y - ms_closest_point_y };
+    float distance = vec2_len(conjunctor);
+
+    if( distance > coll_S.radius )
+        return contact;
+
+    // ------------------------------------------------------------------------------------
+    // Build the contact point
+
+    // Build the contact normal in world space; it is referred to the sphere surface
+    vec4 ms_closest_point = {ms_closest_point_x, ms_closest_point_y, 0, 1};
+    vec4 ws_closest_point;
+    mat4x4_mul_vec4(ws_closest_point, box_model_matrix, ms_closest_point);
+    vec2 ws_normal = { ws_closest_point[0] - ws_sphere_center[0], ws_closest_point[1] - ws_sphere_center[1] };
+    float length = vec2_len(ws_normal);
+    ws_normal[0] = ws_normal[0] / length;
+    ws_normal[1] = ws_normal[1] / length;
+
+    contact.ms_qa_x = ms_closest_point_x;
+    contact.ms_qa_y = ms_closest_point_y;
+    contact.ms_qb_x = ws_normal[0] * coll_S.radius;
+    contact.ms_qb_y = ws_normal[1] * coll_S.radius;
+
+    contact.pen = coll_S.radius - distance;
+    contact.ws_n_x = ws_normal[0];
+    contact.ws_n_y = ws_normal[1];
+
+    contact.rb_a = &B;
+    contact.rb_b = &S;
 
     return contact;
 
@@ -661,7 +781,7 @@ physic::dim2::contact_data physic::dim2::generate_pointbox_contactdata_naive_alg
 // =========================================================================|
 
 void physic::dim2::contact_solver_dispatcher(){
-
+    
     for( contact_data& contact : contacts){
 
         solve_velocity(contact);
@@ -685,6 +805,19 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // ====================================================================================
     // Setup model matrices for each rigid body
 
+    rigidbody tmpRb;
+    if(contact.rb_b == nullptr){
+        tmpRb.angle = 0;
+        tmpRb.I = 100000000;
+        tmpRb.m = 100000000;
+        tmpRb.pos_x = 0;
+        tmpRb.pos_y = 0;
+        tmpRb.vel_x = 0;
+        tmpRb.vel_y = 0;
+        tmpRb.w = 0;
+        contact.rb_b = &tmpRb;
+    }
+
     rigidbody& rbA = *(contact.rb_a);
     rigidbody& rbB = *(contact.rb_b);
 
@@ -693,7 +826,6 @@ void physic::dim2::solve_velocity(contact_data& contact){
 
     mat4x4 inverse_model_matrix_A;
     mat4x4 inverse_model_matrix_B;
-    
 
     build_model_matrix(model_matrix_A, rbA.pos_x, rbA.pos_y, rbA.angle);
     build_model_matrix(model_matrix_B, rbB.pos_x, rbB.pos_y, rbB.angle);
@@ -809,7 +941,8 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // change in velocity)
     //
 
-    float actual_vc_change = std::min(abs(vc_s + vc), 2.f );   
+    //float actual_vc_change = std::min(abs(vc_s - vc), 50.f );   
+    float actual_vc_change = abs(vc_s - vc);
 
     // ====================================================================================
     // Determine the effect of a unit impulse on the contact points:
@@ -994,7 +1127,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     
     contact.resolved_impulse_mag = imp.mag;
 
-    /* std::cout << "=====================================================" << std::endl << std::flush;
+    std::cout << "=====================================================" << std::endl << std::flush;
     std::cout << "VELOCITY SOLVER DATA: " << std::endl << std::flush;
     std::cout << "local_va_x: " << local_va_x << std::endl << std::flush;
     std::cout << "local_va_y: " << local_va_y << std::endl << std::flush;
@@ -1024,7 +1157,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     std::cout << "ang_dvb_n: " << ang_dvb_n << std::endl << std::flush;
     std::cout << "angular_effect: " << angular_effect << std::endl << std::flush;
     std::cout << "vc_change_per_imp_unit: " << vc_change_per_imp_unit << std::endl << std::flush;
-    std::cout<< "Impulse Magnitude: " << imp.mag << std::endl << std::flush; */
+    std::cout<< "Impulse Magnitude: " << imp.mag << std::endl << std::flush;
 
 }
 
@@ -1036,18 +1169,35 @@ void physic::dim2::solve_velocity(contact_data& contact){
 
 void physic::dim2::solve_interpenetration(contact_data& contact){
 
+    rigidbody tmpRb;
+    if(contact.rb_b == nullptr){
+        tmpRb.angle = 0;
+        tmpRb.I = 100000000;
+        tmpRb.m = 100000000;
+        tmpRb.pos_x = 0;
+        tmpRb.pos_y = 0;
+        tmpRb.vel_x = 0;
+        tmpRb.vel_y = 0;
+        tmpRb.w = 0;
+        contact.rb_b = &tmpRb;
+    }
+
+
     // With this configuration, rbA contact happen on a vertex while rbB contact
     // happen on a surface. Hence the normal of contact specify the normal surface of B
     rigidbody& rbA = *(contact.rb_a);
     rigidbody& rbB = *(contact.rb_b);
-    
-    float disp_x = contact.pen * contact.ws_n_x *0.5f;
-    float disp_y = contact.pen * contact.ws_n_y *0.5f;
 
-    rbA.pos_x += disp_x;
-    rbA.pos_y += disp_y;
-    rbB.pos_x -= disp_x;
-    rbB.pos_y -= disp_y;
+    float mass_factor_A = rbB.m / (rbA.m + rbB.m);
+    float mass_factor_B = rbA.m / (rbA.m + rbB.m);
+    
+    float disp_x = contact.pen * contact.ws_n_x;
+    float disp_y = contact.pen * contact.ws_n_y;
+
+    rbA.pos_x += disp_x * mass_factor_A;
+    rbA.pos_y += disp_y * mass_factor_A;
+    rbB.pos_x -= disp_x * mass_factor_B;
+    rbB.pos_y -= disp_y * mass_factor_B;
 
 }
 

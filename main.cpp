@@ -92,7 +92,7 @@ int main(void){
     }
     
     // ====================================================================================
-    // Initialize Rendering Camera properties
+    // Flow controll variables
 
     bool simulation_run = true;
     
@@ -128,6 +128,39 @@ int main(void){
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         //=================================================================================================================
+        
+        //                                         SAVE SCENARIO CONFIGURATION                                                     
+        
+        //=================================================================================================================
+
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            if ( inputs::stash_scenario_configuration_button == inputs::PRESS ) {
+                
+                for(int i = 0; i < game_data::boxGameobjects.size(); i++){
+                    game_data::stashedBoxGameobjects[i] = game_data::boxGameobjects[i]; 
+                }
+
+                for(int i = 0; i < game_data::sphereGameobjects.size(); i++){
+                    game_data::stashedSphereGameobjects[i] = game_data::sphereGameobjects[i]; 
+                }
+
+            }
+
+            if ( inputs::load_stashed_scenario_configuration_button == inputs::PRESS ){
+                
+                for(int i = 0; i < game_data::boxGameobjects.size(); i++){
+                    game_data::boxGameobjects[i] = game_data::stashedBoxGameobjects[i]; 
+                }
+
+                for(int i = 0; i < game_data::sphereGameobjects.size(); i++){
+                    game_data::sphereGameobjects[i] = game_data::stashedSphereGameobjects[i]; 
+                }
+            }
+
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //=================================================================================================================
 
         //                                 CHECK IF MOUSE INPUT CLICKED ON SOME GAME OBJECT
         
@@ -145,24 +178,20 @@ int main(void){
         { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             // Itera su tutti i box game objects
+
             for( auto& box_go : game_data::boxGameobjects) {
-
-                
-                        
-                physic::dim2::rigidbody& rb = box_go.rb;
-                physic::dim2::collider_box& coll = box_go.coll;
-
+  
                 // Controlla se le coordinate del mouse in world space sono dentro al box corrente
                 // NB: world_x_pos e world_y_pos del mouse click sono calcolate nello step di update degli inputs
                 if ( 
                     physic::dim2::check_pointbox_collision(
                         inputs::mouse_last_click.world_x_pos,
                         inputs::mouse_last_click.world_y_pos,
-                        rb.pos_x,
-                        rb.pos_y,
-                        rb.angle,
-                        coll.width,
-                        coll.height) 
+                        box_go.rb.pos_x,
+                        box_go.rb.pos_y,
+                        box_go.rb.angle,
+                        box_go.coll.width,
+                        box_go.coll.height) 
                 ){
                     game_data::event_is_dragging_active = true;
                     
@@ -182,6 +211,37 @@ int main(void){
 
             }
             
+            // Itera su tutti gli sphere game objects
+
+            for( auto& sphere_go : game_data::sphereGameobjects) {
+  
+                // Controlla se le coordinate del mouse in world space sono dentro al box corrente
+                // NB: world_x_pos e world_y_pos del mouse click sono calcolate nello step di update degli inputs
+                if ( 
+                    physic::dim2::check_pointsphere_collision(
+                        inputs::mouse_last_click.world_x_pos,
+                        inputs::mouse_last_click.world_y_pos,
+                        sphere_go.rb.pos_x,
+                        sphere_go.rb.pos_y,
+                        sphere_go.coll.radius) 
+                ){
+                    game_data::event_is_dragging_active = true;
+                    
+                    // Set draggedGameObject pointers
+                    // WARNING: Pointing to an array element
+                    game_data::draggedGameObject.world_x_pos = &sphere_go.world_x_pos;
+                    game_data::draggedGameObject.world_x_scale = &sphere_go.world_x_scale;
+                    game_data::draggedGameObject.world_y_pos = &sphere_go.world_y_pos;
+                    game_data::draggedGameObject.world_y_scale = &sphere_go.world_y_scale;
+                    game_data::draggedGameObject.world_z_angle = &sphere_go.world_z_angle;
+                    game_data::draggedGameObject.render_outline = &sphere_go.render_outline;
+                    game_data::draggedGameObject.rb = &sphere_go.rb;
+                    game_data::draggedGameObject.coll = &sphere_go.coll;
+                    game_data::draggedGameObject.gameobject_id = &sphere_go.gameobject_id;
+
+                }
+
+            }
             
 
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -221,7 +281,7 @@ int main(void){
        
         //=================================================================================================================
 
-        //                           PHYSIC UPDATE: Generate contact data with naive algorithm
+        //                           PHYSIC UPDATE: Generate contact data
         
         //=================================================================================================================
 
@@ -236,7 +296,7 @@ int main(void){
             // ====================================================================================
             // Dispatch the collision tests and populate the contacts vector
 
-            // BOX-BOX DISPATCH:
+            // BOX-BOX DISPATCH: with naive algorithm
 
             if(game_data::boxGameobjects.size() != 0){
                 for(int i = 0; i < game_data::boxGameobjects.size()-1; i ++){
@@ -245,7 +305,7 @@ int main(void){
                         game_data::BoxGameObject& boxA = game_data::boxGameobjects[i];
                         game_data::BoxGameObject& boxB = game_data::boxGameobjects[j];
 
-                        physic::dim2::contact_data new_contact = generate_boxbox_contactdata_naive_alg(boxA.rb, boxB.rb, boxA.coll, boxB.coll);
+                        physic::dim2::contact_data new_contact = physic::dim2::generate_boxbox_contactdata_naive_alg(boxA.rb, boxB.rb, boxA.coll, boxB.coll);
 
                         if (new_contact.pen > 0){
                             physic::dim2::contacts.push_back(new_contact);
@@ -263,7 +323,7 @@ int main(void){
                         game_data::SphereGameObject& sphereA = game_data::sphereGameobjects[i];
                         game_data::SphereGameObject& sphereB = game_data::sphereGameobjects[j];
 
-                        physic::dim2::contact_data new_contact = generate_spheresphere_contactdata_norotation(sphereA.rb, sphereB.rb, sphereA.coll, sphereB.coll);
+                        physic::dim2::contact_data new_contact = physic::dim2::generate_spheresphere_contactdata_norotation(sphereA.rb, sphereB.rb, sphereA.coll, sphereB.coll);
 
                         if (new_contact.pen > 0){
                             physic::dim2::contacts.push_back(new_contact);
@@ -271,8 +331,46 @@ int main(void){
                     }
                 }
             }
-            
-            
+
+            // BOX-SPHERE DISPATCH
+
+            if(game_data::boxGameobjects.size() != 0 && game_data::sphereGameobjects.size() != 0){
+                for(int i = 0; i < game_data::boxGameobjects.size(); i++){
+                    for(int j = 0; j < game_data::sphereGameobjects.size(); j++){
+
+                        game_data::BoxGameObject& box = game_data::boxGameobjects[i];
+                        game_data::SphereGameObject& sphere = game_data::sphereGameobjects[j];
+
+                        physic::dim2::contact_data new_contact = physic::dim2::generate_spherebox_contactdata_norotation(sphere.rb, box.rb, sphere.coll, box.coll);
+
+                        if (new_contact.pen > 0){
+                            physic::dim2::contacts.push_back(new_contact);
+                        }
+
+                    }
+                }
+            } 
+
+            // SPHERE-HALFSPACE DISPATCH
+
+            if ( game_data::sphereGameobjects.size() != 0 && game_data::halfSpaceGameobjects.size() != 0)
+            {
+                for(int i = 0; i < game_data::sphereGameobjects.size(); i++){
+                    for(int j = 0; j < game_data::halfSpaceGameobjects.size(); j++){
+
+                        game_data::SphereGameObject& sphere = game_data::sphereGameobjects[i];
+                        game_data::HalfSpaceGameObject& halfspace = game_data::halfSpaceGameobjects[j];
+
+                        physic::dim2::contact_data new_contact = physic::dim2::generate_spherehalfspace_contactdata(sphere.rb, sphere.coll, halfspace.coll);
+
+                        if (new_contact.pen > 0){
+                            physic::dim2::contacts.push_back(new_contact);
+                        }
+
+                    }
+                }
+            }
+
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //=================================================================================================================
 
@@ -282,8 +380,8 @@ int main(void){
 
         if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run)
         { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-                physic::dim2::contact_solver_dispatcher();
+
+            physic::dim2::contact_solver_dispatcher();
                 
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
@@ -493,15 +591,15 @@ int main(void){
                 // Calculate MVP based on box transform
                 rendering::calculate_mvp(
                     mvp, 
-                    sphere_go.world_x_scale, 
-                    sphere_go.world_y_scale, 
+                    sphere_go.world_x_scale *2, 
+                    sphere_go.world_y_scale *2, 
                     sphere_go.world_x_pos, 
                     sphere_go.world_y_pos, 
                     sphere_go.world_z_angle
                 );
 
                 // Setup shader uniforms
-                rendering::sphere_shader::set_uniform_outline(0);
+                rendering::sphere_shader::set_uniform_outline(sphere_go.render_outline);
                 rendering::sphere_shader::set_uniform_mvp(mvp);
 
                 // Render on the currently bounded framebuffer
@@ -509,6 +607,52 @@ int main(void){
             }
 
             glDisable(GL_DEPTH_TEST); 
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //=================================================================================================================
+
+        //                             GAMESCENE-FRAMEBUFFER RENDERING: Halfspaces Gameobjects
+
+        //=================================================================================================================
+        
+        // DESCRIPTION:
+        // Renders data inside game_data::world_gameobjects_box
+        
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            
+            // Renders visually the data inside the physic::dim2::contacts vector 
+                           
+            glUseProgram(rendering::debug_line_shader::program_id);
+            glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+
+            for (auto& halfspace_go : game_data::halfSpaceGameobjects){
+
+                float normal_ort_x = halfspace_go.coll.normal_y;
+                float normal_ort_y = - halfspace_go.coll.normal_x;
+                float plane_offset_x = halfspace_go.coll.normal_x * halfspace_go.coll.origin_offset;
+                float plane_offset_y = halfspace_go.coll.normal_y * halfspace_go.coll.origin_offset;
+
+                rendering::debug_line_shader::draw_2d_point(plane_offset_x,plane_offset_y);
+
+                // Render the normal (applied on QB)
+                rendering::debug_line_shader::draw_2d_line_stripe( 
+                    plane_offset_x,
+                    plane_offset_y,
+                    0,
+                    {normal_ort_x * 100, normal_ort_y * 100, normal_ort_x * -100, normal_ort_y * -100}
+                );
+
+                // Render the normal (applied on QB)
+                rendering::debug_line_shader::draw_2d_line_stripe( 
+                    plane_offset_x,
+                    plane_offset_y,
+                    0,
+                    {0, 0, halfspace_go.coll.normal_x, halfspace_go.coll.normal_y}
+                );
+            
+            }
+
+            
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
         //=================================================================================================================
@@ -519,7 +663,8 @@ int main(void){
         
         // DESCRIPTION:
         // Renders data inside physic::dim2::contacts vector
-            
+        
+        if( game_data::debug_draw_contact_data )
         { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             
             // Renders visually the data inside the physic::dim2::contacts vector 
@@ -567,7 +712,7 @@ int main(void){
 
         //=================================================================================================================
         
-        if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run)
+        if ( game_data::debug_draw_impulses )
         { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 
             for( int i = 0; i < physic::dim2::contacts.size(); i++ ){
