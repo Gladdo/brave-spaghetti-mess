@@ -42,7 +42,7 @@ void game_data::AddBoxGameObject(){
     // Setup Gameobject box rigidbody
     physic::dim2::rigidbody& rb = box_go.rb;
     rb.angle = 0;
-    rb.I = 30;
+    rb.I = 1;
     rb.m = 1;
     rb.pos_x = 0;
     rb.pos_y = 0;
@@ -80,7 +80,7 @@ void game_data::AddSphereGameObject(){
     // Setup Gameobject box rigidbody
     physic::dim2::rigidbody& rb = sphere_go.rb;
     rb.angle = 0;
-    rb.I = 30;
+    rb.I = 1;
     rb.m = 1;
     rb.pos_x = 0;
     rb.pos_y = 0;
@@ -120,4 +120,5 @@ void game_data::AddHalfspaceObject(){
     // Increase the counter for game objects ids:
     
     next_gameobject_id++;
+
 }

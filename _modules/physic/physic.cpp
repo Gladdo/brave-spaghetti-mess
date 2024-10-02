@@ -113,7 +113,6 @@ void physic::dim2::apply_impulse(rigidbody& rb, impulse impulse){
     float ms_n_y;
     float norm;
     {
-
         vec4 ws_n = { impulse.d_x, impulse.d_y, 0.0, 0 };
         vec4 ms_n;
         mat4x4_mul_vec4(ms_n, inv_model_matrix, ws_n);
@@ -125,20 +124,21 @@ void physic::dim2::apply_impulse(rigidbody& rb, impulse impulse){
         ms_n_y = normalizer[1] / norm;
     }
 
-    // Find the impulsive torque (q ∧ impulse)
+    // Find the impulsive torque = (q ∧ impulse)
+    // Il "/ 100" è fatto per tenere a bada la quantità di rotazione angolare
     float imp_torq_z = impulse.q_x * ms_n_y * impulse.mag - impulse.q_y * ms_n_x * impulse.mag;
     
     // Angular velocity update: from 𝜏 = Iw
     rb.w = rb.w + 1/rb.I * imp_torq_z;
 
-    /*std::cout << "======================================" << std::endl << std::flush;
+    std::cout << "======================================" << std::endl << std::flush;
     std::cout << "IMPULSE DATA" << std::endl << std::flush;
     std::cout << "application point q: " << impulse.q_x << ", " << impulse.q_y << std:: endl << std::flush;
     std::cout << "impulse normal: " << impulse.d_x << ", " << impulse.d_y << std::endl << std::flush;
     std::cout << "model space impulse normal: " << ms_n_x << ", " << ms_n_y << std::endl << std::flush;
     std::cout << "model space impulse normal magnitude: " << norm << std::endl << std::flush;
     std::cout << "imp_torq_z: " << imp_torq_z << std::endl << std::flush;
-    */
+   
 
 }
 
@@ -876,6 +876,10 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // Setup model matrices for each rigid body
 
     rigidbody tmpRb;
+
+    rigidbody* rbB_ptr;
+
+    // If contact.rb_b == nullptr it means that the B object is a static object
     if(contact.rb_b == nullptr){
         tmpRb.angle = 0;
         tmpRb.I = 100000000;
@@ -885,23 +889,37 @@ void physic::dim2::solve_velocity(contact_data& contact){
         tmpRb.vel_x = 0;
         tmpRb.vel_y = 0;
         tmpRb.w = 0;
-        contact.rb_b = &tmpRb;
+        rbB_ptr = &tmpRb;
+
+        contact.rb_b = contact.rb_a;
+        
+    }else{
+        rbB_ptr = contact.rb_b;
     }
 
     rigidbody& rbA = *(contact.rb_a);
-    rigidbody& rbB = *(contact.rb_b);
+    rigidbody& rbB = *rbB_ptr;
 
     mat4x4 model_matrix_A;
     mat4x4 model_matrix_B;
+    mat4x4 rotation_matrix_A;
+    mat4x4 rotation_matrix_B;
 
     mat4x4 inverse_model_matrix_A;
     mat4x4 inverse_model_matrix_B;
+    mat4x4 inverse_rotation_matrix_A;
+    mat4x4 inverse_rotation_matrix_B;
+
 
     build_model_matrix(model_matrix_A, rbA.pos_x, rbA.pos_y, rbA.angle);
     build_model_matrix(model_matrix_B, rbB.pos_x, rbB.pos_y, rbB.angle);
+    build_model_matrix(rotation_matrix_A, 0, 0, rbA.angle);
+    build_model_matrix(rotation_matrix_B, 0, 0, rbB.angle);
 
     mat4x4_invert(inverse_model_matrix_A, model_matrix_A);
     mat4x4_invert(inverse_model_matrix_B, model_matrix_B);
+    mat4x4_invert(inverse_rotation_matrix_A, rotation_matrix_A);
+    mat4x4_invert(inverse_rotation_matrix_B, rotation_matrix_B);
 
     // ====================================================================================
     // Find the world velocity of the point q_a on rbA.
@@ -929,7 +947,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // Translate the previous velocity vector from model space to world space
     vec4 local_rotation_va = { local_va_x, local_va_y, 0, 0};
     vec4 world_rotation_va;
-    mat4x4_mul_vec4(world_rotation_va, model_matrix_B, local_rotation_va);
+    mat4x4_mul_vec4(world_rotation_va, rotation_matrix_A, local_rotation_va);
 
     // ------------------------------------------------------------------------------------
     // Find the total world velocity of q_a:
@@ -964,7 +982,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // Translate the previous velocity vector from model space to world space
     vec4 local_rotation_vb = { local_vb_x, local_vb_y, 0, 0};
     vec4 world_rotation_vb;
-    mat4x4_mul_vec4(world_rotation_vb, model_matrix_B, local_rotation_vb);
+    mat4x4_mul_vec4(world_rotation_vb, rotation_matrix_B, local_rotation_vb);
 
     // ------------------------------------------------------------------------------------
     // Find the total world velocity of q_b:
@@ -1002,7 +1020,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // ------------------------------------------------------------------------------------
     // Find the closing velocity after the collision
 
-    float vc_s = - 0.88 * vc; 
+    float vc_s = - 1 * vc; // before it was 0.88
 
     // ------------------------------------------------------------------------------------
     // Find the delta velocity:
@@ -1048,7 +1066,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     {   
         vec4 ws_n = { contact.ws_n_x, contact.ws_n_y, 0.0, 0};
         vec4 ms_n;
-        mat4x4_mul_vec4(ms_n, inverse_model_matrix_A, ws_n);
+        mat4x4_mul_vec4(ms_n, inverse_rotation_matrix_A, ws_n);
 
         vec2 normalizer = {ms_n[0], ms_n[1]};
         float norm = vec2_len( normalizer);
@@ -1108,7 +1126,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     {       
         vec4 ws_n = { -contact.ws_n_x, -contact.ws_n_y, 0.0, 0 };
         vec4 ms_n;
-        mat4x4_mul_vec4(ms_n, inverse_model_matrix_B, ws_n);
+        mat4x4_mul_vec4(ms_n, inverse_rotation_matrix_B, ws_n);
         
         vec2 normalizer = {ms_n[0], ms_n[1]};
         float norm = vec2_len( normalizer);
@@ -1150,8 +1168,8 @@ void physic::dim2::solve_velocity(contact_data& contact){
     //  ○   dv = dw ∧ q
     //
 
-    float dvb_x = - dwb * ms_nb_y;
-    float dvb_y = dwb * ms_nb_x;
+    float dvb_x = - dwb * contact.ms_qb_y;
+    float dvb_y = dwb * contact.ms_qb_x;
 
     // Finally we're interested only in the previous change of velocity ALONG the
     // contact normal (because we want to see the effect of the unit impulse
@@ -1186,18 +1204,18 @@ void physic::dim2::solve_velocity(contact_data& contact){
     imp.q_x = contact.ms_qa_x;
     imp.q_y = contact.ms_qa_y;
 
-    apply_impulse( *contact.rb_a, imp);
+    apply_impulse( rbA, imp);
 
     imp.d_x = - contact.ws_n_x;
     imp.d_y = - contact.ws_n_y;
     imp.q_x = contact.ms_qb_x;
     imp.q_y = contact.ms_qb_y;
 
-    apply_impulse( *contact.rb_b, imp);
+    apply_impulse( rbB, imp);
     
     contact.resolved_impulse_mag = imp.mag;
 
-    /* std::cout << "=====================================================" << std::endl << std::flush;
+    std::cout << "=====================================================" << std::endl << std::flush;
     std::cout << "VELOCITY SOLVER DATA: " << std::endl << std::flush;
     std::cout << "local_va_x: " << local_va_x << std::endl << std::flush;
     std::cout << "local_va_y: " << local_va_y << std::endl << std::flush;
@@ -1227,7 +1245,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     std::cout << "ang_dvb_n: " << ang_dvb_n << std::endl << std::flush;
     std::cout << "angular_effect: " << angular_effect << std::endl << std::flush;
     std::cout << "vc_change_per_imp_unit: " << vc_change_per_imp_unit << std::endl << std::flush;
-    std::cout<< "Impulse Magnitude: " << imp.mag << std::endl << std::flush; */
+    std::cout<< "Impulse Magnitude: " << imp.mag << std::endl << std::flush;
 
 }
 
@@ -1244,8 +1262,8 @@ void physic::dim2::solve_interpenetration(contact_data& contact){
         tmpRb.angle = 0;
         tmpRb.I = 100000000;
         tmpRb.m = 100000000;
-        tmpRb.pos_x = 0;
-        tmpRb.pos_y = 0;
+        tmpRb.pos_x = contact.rb_a->pos_x;
+        tmpRb.pos_y = contact.rb_a->pos_y;
         tmpRb.vel_x = 0;
         tmpRb.vel_y = 0;
         tmpRb.w = 0;

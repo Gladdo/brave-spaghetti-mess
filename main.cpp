@@ -95,6 +95,27 @@ int main(void){
     // Flow controll variables
 
     bool simulation_run = true;
+
+    // ====================================================================================
+    // Initialize scenario
+
+    game_data::AddHalfspaceObject();
+    game_data::AddHalfspaceObject();
+    game_data::AddHalfspaceObject();
+    game_data::AddHalfspaceObject();
+
+    game_data::halfSpaceGameobjects[0].coll.origin_offset = - 9.5;
+    game_data::halfSpaceGameobjects[0].coll.normal_x = 0;
+    game_data::halfSpaceGameobjects[0].coll.normal_y = 1;
+    game_data::halfSpaceGameobjects[1].coll.origin_offset = - 15.5;
+    game_data::halfSpaceGameobjects[1].coll.normal_x = -1;
+    game_data::halfSpaceGameobjects[1].coll.normal_y = 0;
+    game_data::halfSpaceGameobjects[2].coll.origin_offset = - 9.5;
+    game_data::halfSpaceGameobjects[2].coll.normal_x = 0;
+    game_data::halfSpaceGameobjects[2].coll.normal_y = -1;
+    game_data::halfSpaceGameobjects[3].coll.origin_offset = - 15.5;
+    game_data::halfSpaceGameobjects[3].coll.normal_x = 1;
+    game_data::halfSpaceGameobjects[3].coll.normal_y = 0;
     
     while (!glfwWindowShouldClose(window))
     { 
@@ -178,7 +199,7 @@ int main(void){
         { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             // Itera su tutti i box game objects
-
+            int index = 0;
             for( auto& box_go : game_data::boxGameobjects) {
   
                 // Controlla se le coordinate del mouse in world space sono dentro al box corrente
@@ -207,12 +228,17 @@ int main(void){
                     game_data::draggedGameObject.coll = &box_go.coll;
                     game_data::draggedGameObject.gameobject_id = &box_go.gameobject_id;
 
+                    gui::selected_box_array_pos = index;
+                    gui::selected_sphere_array_pos = -1;
+                    gui::selected_halfspace_array_pos = -1;
                 }
+
+                index++;
 
             }
             
             // Itera su tutti gli sphere game objects
-
+            index = 0;
             for( auto& sphere_go : game_data::sphereGameobjects) {
   
                 // Controlla se le coordinate del mouse in world space sono dentro al box corrente
@@ -239,8 +265,12 @@ int main(void){
                     game_data::draggedGameObject.coll = &sphere_go.coll;
                     game_data::draggedGameObject.gameobject_id = &sphere_go.gameobject_id;
 
+                    gui::selected_box_array_pos = -1;
+                    gui::selected_sphere_array_pos = index;
+                    gui::selected_halfspace_array_pos = -1;
                 }
 
+                index ++;
             }
             
 
@@ -710,6 +740,7 @@ int main(void){
 
                 // Render QB
                 rendering::debug_line_shader::draw_2d_point(world_qb[0],world_qb[1]);
+                
 
                 // Render the normal (applied on QB)
                 rendering::debug_line_shader::draw_2d_line_stripe( 

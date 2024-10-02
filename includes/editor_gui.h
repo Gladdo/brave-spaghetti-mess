@@ -24,6 +24,10 @@ namespace gui{
 
     extern gui_parameters parameters;
 
+    extern int selected_box_array_pos;
+    extern int selected_sphere_array_pos;
+    extern int selected_halfspace_array_pos;
+
     extern int game_object_list_selected_element_id;
 
     void init(GLFWwindow * window);

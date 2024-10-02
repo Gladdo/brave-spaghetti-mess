@@ -6,6 +6,8 @@
 #include <string>
 #include <cmath>
 
+#include <iostream>
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                  GUI
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -13,6 +15,10 @@
 game_data::AliasGameObject selected_go;
 
 gui::gui_parameters gui::parameters;
+
+int gui::selected_box_array_pos = -1;
+int gui::selected_sphere_array_pos = -1;
+int gui::selected_halfspace_array_pos = -1;
 
 // =========================================================================|
 //                                  init
@@ -61,6 +67,7 @@ void gui::render_gui(){
 
             if (ImGui::MenuItem("Add HALFSPACE Game Object")) {
                 game_data::AddHalfspaceObject();
+                std::cout << "ADDED HALFSPACE" << std::endl << std::flush;
             } 
             
         ImGui::EndMenu();
@@ -93,33 +100,27 @@ void gui::render_gui(){
         //=================================================================================================================
         //                                              GAMEOBJECTS LIST TAB
         //=================================================================================================================
-
+        
         ImGui::BeginChild("ResizableChild", ImVec2(-FLT_MIN, ImGui::GetTextLineHeightWithSpacing() * 8), ImGuiChildFlags_Border | ImGuiChildFlags_ResizeY);
         {
+            int index = 0;
             // Iterate over all the world box gameobjects
             for (auto& box_go : game_data::boxGameobjects){
 
                 // Create a button with the current game object id; if selected, set game_object_list_selected_element_id
                 std::string text = "Box game object id: " + std::to_string(box_go.gameobject_id);
                 if (ImGui::Button(text.c_str())) {
-                    
-                    selected_go.coll = &box_go.coll;
-                    selected_go.gameobject_id = &box_go.gameobject_id;
-                    selected_go.rb = &box_go.rb;
-                    selected_go.render_outline = nullptr;
-                    selected_go.world_x_pos = &box_go.world_x_pos;
-                    selected_go.world_x_scale = &box_go.world_x_scale;
-                    selected_go.world_y_pos = &box_go.world_y_pos;
-                    selected_go.world_y_scale = &box_go.world_y_scale;
-                    selected_go.world_z_angle = &box_go.world_z_angle;
-                    
-                    
-                    
 
+                    selected_box_array_pos = index;
+                    selected_sphere_array_pos = -1;
+                    selected_halfspace_array_pos = -1;
+                    
                 }
+                index++;
 
             }
 
+            index = 0;
             // Iterate over all the world sphere gameobjects
             for (auto& sphere_go : game_data::sphereGameobjects){
 
@@ -127,36 +128,75 @@ void gui::render_gui(){
                 std::string text = "Sphere game object id: " + std::to_string(sphere_go.gameobject_id);
                 if (ImGui::Button(text.c_str())) {
                     
-                    selected_go.coll = &sphere_go.coll;
-                    selected_go.gameobject_id = &sphere_go.gameobject_id;
-                    selected_go.rb = &sphere_go.rb;
-                    selected_go.render_outline = nullptr;
-                    selected_go.world_x_pos = &sphere_go.world_x_pos;
-                    selected_go.world_x_scale = &sphere_go.world_x_scale;
-                    selected_go.world_y_pos = &sphere_go.world_y_pos;
-                    selected_go.world_y_scale = &sphere_go.world_y_scale;
-                    selected_go.world_z_angle = &sphere_go.world_z_angle;
+                    selected_box_array_pos = -1;
+                    selected_sphere_array_pos = index;
+                    selected_halfspace_array_pos = -1;
                     
                 }
+                index++;
 
             }
 
+            index = 0;
             // Iterate over all the world halfspace gameobjects
             for (auto& halfspace_go : game_data::halfSpaceGameobjects) {
 
                 // Create a button with the current game object id; if selected, set game_object_list_selected_element_id
                 std::string text = "Halfspace game object id: " + std::to_string(halfspace_go.gameobject_id);
                 if (ImGui::Button(text.c_str())) {
-                    selected_go.coll = &halfspace_go.coll;
-                    selected_go.gameobject_id = &halfspace_go.gameobject_id;
-                    selected_go.rb = nullptr;
-                    selected_go.render_outline = nullptr;
-                    selected_go.world_x_pos = nullptr;
-                    selected_go.world_x_scale = nullptr;
-                    selected_go.world_y_pos = nullptr;
-                    selected_go.world_y_scale = nullptr;
-                    selected_go.world_z_angle = nullptr;
+
+                    selected_box_array_pos = -1;
+                    selected_sphere_array_pos = -1;
+                    selected_halfspace_array_pos = index;
                 }
+                index ++;
+            }
+
+            if(selected_box_array_pos > -1){
+                
+                game_data::BoxGameObject& box_go = game_data::boxGameobjects[selected_box_array_pos];
+
+                selected_go.coll = &box_go.coll;
+                selected_go.gameobject_id = &box_go.gameobject_id;
+                selected_go.rb = &box_go.rb;
+                selected_go.render_outline = nullptr;
+                selected_go.world_x_pos = &box_go.world_x_pos;
+                selected_go.world_x_scale = &box_go.world_x_scale;
+                selected_go.world_y_pos = &box_go.world_y_pos;
+                selected_go.world_y_scale = &box_go.world_y_scale;
+                selected_go.world_z_angle = &box_go.world_z_angle;
+
+            }
+
+            if(selected_sphere_array_pos > -1){
+
+                game_data::SphereGameObject& sphere_go = game_data::sphereGameobjects[selected_sphere_array_pos];
+
+                selected_go.coll = &sphere_go.coll;
+                selected_go.gameobject_id = &sphere_go.gameobject_id;
+                selected_go.rb = &sphere_go.rb;
+                selected_go.render_outline = nullptr;
+                selected_go.world_x_pos = &sphere_go.world_x_pos;
+                selected_go.world_x_scale = &sphere_go.world_x_scale;
+                selected_go.world_y_pos = &sphere_go.world_y_pos;
+                selected_go.world_y_scale = &sphere_go.world_y_scale;
+                selected_go.world_z_angle = &sphere_go.world_z_angle;
+            }
+
+            if(selected_halfspace_array_pos > -1){
+
+                game_data::HalfSpaceGameObject& halfspace_go = game_data::halfSpaceGameobjects[selected_halfspace_array_pos];
+
+                selected_go.coll = &halfspace_go.coll;
+                selected_go.gameobject_id = &halfspace_go.gameobject_id;
+                selected_go.rb = nullptr;
+                selected_go.render_outline = nullptr;
+                selected_go.world_x_pos = nullptr;
+                selected_go.world_x_scale = nullptr;
+                selected_go.world_y_pos = nullptr;
+                selected_go.world_y_scale = nullptr;
+                selected_go.world_z_angle = nullptr;
+
             }
 
         }
@@ -170,9 +210,9 @@ void gui::render_gui(){
         // ====================================================================================
         // If game object dragging is active, inspect the dragged gameobject
 
-        if (game_data::event_is_dragging_active) {
+        /* if (game_data::event_is_dragging_active) {
             selected_go = game_data::draggedGameObject;
-        } 
+        }  */
 
         // ====================================================================================
         // Panel child start
@@ -398,6 +438,58 @@ void gui::render_gui(){
         }
             
         ImGui::EndChild();
+
+    }
+    ImGui::End();
+
+    ImGui::Begin("Kinetic Energies");
+    {
+
+        static float k_energy = 0.0f;
+        static float tot_k_energy = 0.0f;
+        tot_k_energy = 0;
+
+        for( int i = 0; i < game_data::boxGameobjects.size(); i++ ){
+            
+            physic::dim2::rigidbody& rb = game_data::boxGameobjects[i].rb;
+            vec2 vel2 = {rb.vel_x, rb.vel_y};
+            float vel = vec2_len(vel2);
+            float lin_k_energy = 0.5 * rb.m * vel * vel;
+            float ang_k_energy = 0.5 * rb.I * rb.w * rb.w;
+
+            k_energy = lin_k_energy + ang_k_energy;
+
+            tot_k_energy += k_energy;
+
+            char buf[32];
+            sprintf(buf, "%d/%d", (int)(k_energy), 1000);
+            ImGui::ProgressBar(k_energy / 1000, ImVec2(0.0f, 0.0f), buf);
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::Text("Id: %d", game_data::boxGameobjects[i].gameobject_id);
+
+        }
+
+        for( int i = 0; i < game_data::sphereGameobjects.size(); i++ ){
+            
+            physic::dim2::rigidbody& rb = game_data::sphereGameobjects[i].rb;
+            vec2 vel2 = {rb.vel_x, rb.vel_y};
+            float vel = vec2_len(vel2);
+            float lin_k_energy = 0.5 * rb.m * vel * vel;
+
+            k_energy = lin_k_energy;
+
+            tot_k_energy += k_energy;
+
+            char buf[32];
+            sprintf(buf, "%d/%d", (int)(k_energy), 1000);
+            ImGui::ProgressBar(k_energy / 1000, ImVec2(0.0f, 0.0f), buf);
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::Text("Id: %d", game_data::sphereGameobjects[i].gameobject_id);
+
+        }
+
+        // Total system kinetic energy
+        ImGui::Text("Tot k-energy: %f ", tot_k_energy);
 
     }
     ImGui::End();
