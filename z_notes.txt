@@ -12,10 +12,22 @@ Save:
     > git push
 
 Branches:
-    > git branch                                  // Shows branches
-    > git checkout [branch_name]                  // Switch to another branch
-    > gut checkout -b [branch_name]               // Create brancha and switches to it
+    // General branches management
+    > git branch                                        // Shows branches
+    > git checkout [branch_name]                        // Switch to another branch
 
-Merge: 
+    // Create new branch
+    > git checkout -b [branch_name]                     // Create branch locally and switches to it
+    > git push --set-upstream origin [branch_name]      // Create the branch on remote also
+
+    // Delete branch
+    > git branch -d [new_feature_branch]                // Delete the local new_feature_branch
+    > git push -d origin [new_feature_branch]           // Delete the remote new_feature_branch
+
+Merge workflow: 
+    > git checkout [old_branch]                         // Switch to the old branch
+    > git merge [new_feature_branch]                    // Merge the new feature on the current branch (the old branch)
+    > git branch -d [new_feature_branch]                // Delete the local new_feature_branch
+    > git push -d origin [new_feature_branch]           // Delete the remote new_feature_branch
 
 Fetch:
