@@ -27,6 +27,7 @@ Branches:
 Merge workflow: 
     > git checkout [old_branch]                         // Switch to the old branch
     > git merge [new_feature_branch]                    // Merge the new feature on the current branch (the old branch)
+    > git push                                          // Push the merge to the remote repository
     > git branch -d [new_feature_branch]                // Delete the local new_feature_branch
     > git push -d origin [new_feature_branch]           // Delete the remote new_feature_branch
 
