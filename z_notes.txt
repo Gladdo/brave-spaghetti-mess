@@ -41,3 +41,12 @@ GITHUB GENERAL WORKFLOW
 - If you need a complete different version of master, work HORIZONTALLY by creating a VERSION BRANCH LIKE: "master-[version]-vX.X". 
     Example: "master-online-v1.0" 
   And then you work vertically on that new version as a separate progression.
+
+Vertical workflow example:
+- Create master-v3.0 from master-v2.0
+- Create feature_branch from master-v3.0
+- Work on feature_branch
+- Merge feature_branch on master-v3.0
+- When enough features are merged on master-v3.0 such that you may call it a new version, create master-v4.0 and start adding features there!
+
+Always work on specific feature branches; this helps you focus on what needs to be done! Makes the features as small as you like, just work like that!
