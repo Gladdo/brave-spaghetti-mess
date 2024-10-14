@@ -456,6 +456,9 @@ int main(void){
                 sphere_go.world_x_pos = sphere_go.rb.pos_x;
                 sphere_go.world_y_pos = sphere_go.rb.pos_y;
                 sphere_go.world_z_angle = sphere_go.rb.angle;
+
+                // Forcefully set rotation to 0 (Fix: 24-10-12 11:20)
+                sphere_go.rb.w = 0;
             }
 
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

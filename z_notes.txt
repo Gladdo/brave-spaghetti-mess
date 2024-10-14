@@ -1,0 +1,21 @@
+=================================================================================
+GITHUB COMMANDS
+=================================================================================
+Log:
+    > git log
+    > q
+
+Save:
+    > git status
+    > git add -A
+    > git commit -m "msg"
+    > git push
+
+Branches:
+    > git branch                                  // Shows branches
+    > git checkout [branch_name]                  // Switch to another branch
+    > gut checkout -b [branch_name]               // Create brancha and switches to it
+
+Merge: 
+
+Fetch:
