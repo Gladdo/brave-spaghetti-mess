@@ -19,6 +19,8 @@ Branches:
     // Create new branch
     > git checkout -b [branch_name]                     // Create branch locally and switches to it
     > git push --set-upstream origin [branch_name]      // Create the branch on remote also
+    > git branch --edit-description                     // Set the branch description
+    > git config branch.[branch_name].description       // Read the branch_name description
 
     // Delete branch
     > git branch -d [new_feature_branch]                // Delete the local new_feature_branch
@@ -45,6 +47,7 @@ GITHUB GENERAL WORKFLOW
 Vertical workflow example:
 - Create master-v3.0 from master-v2.0
 - Create feature_branch from master-v3.0
+- Explain in detail the specific for the feature beign added
 - Work on feature_branch
 - Merge feature_branch on master-v3.0
 - When enough features are merged on master-v3.0 such that you may call it a new version, create master-v4.0 and start adding features there!

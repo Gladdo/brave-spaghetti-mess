@@ -12,4 +12,6 @@ Need Fixing:
 
 TODO:
     ☐ Fare log degli ultimi 3 frames e fare guardia che blocca la simulazione quando esplode l'energia cinetica del sistema. (ie dev'essere compresa tra 0 e 50k)
-    Description: Per catturare gli eventi che fanno esplodere la simulazione e poterli debuggare.
+    Descrizione: Aggiungere l'opzione di tenere in memoria lo stato del gioco negli gli ultimi N frames. Fatto ciò, aggiungere un controllo sull'esplosione di alcuni valori e
+    l'eventuale interruzione del main loop.
+    Quindi consentire di iterare tra i diversi frames così da poter debuggare l'evento che ha fatto esplodere i valori.
