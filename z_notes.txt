@@ -31,4 +31,13 @@ Merge workflow:
     > git branch -d [new_feature_branch]                // Delete the local new_feature_branch
     > git push -d origin [new_feature_branch]           // Delete the remote new_feature_branch
 
-Fetch:
+=================================================================================
+GITHUB GENERAL WORKFLOW
+=================================================================================
+
+- Don't keep a generic master branch
+- Work VERTICALLY by starting features with branching from some "master-vX.X" version; feel free to start many features on master to work on in parallel.
+- Create new "master-vX.X" branches to progress the old "master-vX.X" version with an added feature; do that only WHEN THE NEW FEATURE IS COMPLETED and potentially stable 
+- If you need a complete different version of master, work HORIZONTALLY by creating a VERSION BRANCH LIKE: "master-[version]-vX.X". 
+    Example: "master-online-v1.0" 
+  And then you work vertically on that new version as a separate progression.
