@@ -1,6 +1,6 @@
-=================================================================================
+==================================================================================================================================================================
 GITHUB COMMANDS
-=================================================================================
+==================================================================================================================================================================
 Log:
     > git log
     > q
@@ -31,9 +31,9 @@ Merge workflow:
     > git branch -d [new_feature_branch]                // Delete the local new_feature_branch
     > git push -d origin [new_feature_branch]           // Delete the remote new_feature_branch
 
-=================================================================================
+==================================================================================================================================================================
 GITHUB GENERAL WORKFLOW
-=================================================================================
+==================================================================================================================================================================
 
 - Don't keep a generic master branch
 - Work VERTICALLY by starting features with branching from some "master-vX.X" version; feel free to start many features on master to work on in parallel.
@@ -48,5 +48,6 @@ Vertical workflow example:
 - Work on feature_branch
 - Merge feature_branch on master-v3.0
 - When enough features are merged on master-v3.0 such that you may call it a new version, create master-v4.0 and start adding features there!
+- Set master-v3.0 (a stable version) ad the default branch on github remote repository
 
 Always work on specific feature branches; this helps you focus on what needs to be done! Makes the features as small as you like, just work like that!
