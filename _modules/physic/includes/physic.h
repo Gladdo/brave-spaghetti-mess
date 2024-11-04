@@ -172,6 +172,9 @@ namespace physic{
         //                                              DEBUG
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
+        // ------------------------------------------------------------------------------------
+        // Dichiarazione structure per la rappresentazione dei dati di un contatto:
+
         struct collision_log{
 
             int rba_go_id;                                  // Id del game object a cui appartiene il rbA
@@ -209,11 +212,24 @@ namespace physic{
             float vc_change_per_imp_unit;
             float impulse_magnitude;                        // Modulo dell'impulso risultante dal contatto (trovato in modo tale che giustifichi l'actual_vc_change trovato prima)
         };
+        
+        // ------------------------------------------------------------------------------------
+        // Definizione e gestione dei dati per la gestione dei log sui contatti
 
+        // Il vettore framesCollisionLogs contiene n vettori; il vettore i-esimo contiene la lista di tutte le collisioni
+        // che sono avvenute nel frame i, dove 0 rappresenta il frame corrente e n rappresenta l'ennesimo frame nel passato.
+        extern std::vector<std::vector<collision_log>*> framesCollisionLogs; 
+
+        // Puntatore al vettore di contatti presente nella posizione framesCollisionLogs[0].
+        // Questo è vuoto all'inizio del frame e i contatti generati nel frame corrente vengono memorizzati su di esso
         extern std::vector<collision_log>* currentFrameCollisionLogs;
-        extern std::vector<std::vector<collision_log>*> framesCollisionLogs; // Contiene i log delle collisioni degli ultimi n frames
 
+        // Inizializza framesCollisionLogs
         void InitFrameCollisionLogs(int n_frames);
+
+        // Shifta verso destra tutti i vettori in framesCollisionLogs, fa il clear (svuota) dell'ultimo vettore e lo
+        // riposiziona in testa.
+        // Aggiorna currentFrameCollisionLogs facendolo combaciare con il vettore (svuotato) in testa a framesCollisionLogs.
         void UpdateFrameCollisionLogs();
               
 

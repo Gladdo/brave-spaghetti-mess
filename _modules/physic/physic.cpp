@@ -476,23 +476,35 @@ physic::dim2::contact_data physic::dim2::generate_spherebox_contactdata_norotati
     float ms_sphere_center_y = ms_sphere_center[1];
 
     // ------------------------------------------------------------------------------------
-    // Find the closest point on the box from the sphere center by clamping the coordinates
+    // Check if sphere center SC is inside the box; in questo caso non si può ottenere il 
+    // punto di contatto Qb tramite il clamp delle coordinate di SC con i lati del box: 
+    // il clamp di SC restituirebbe esattamente SC, e la successiva computazione della 
+    // normale di contatto N = Qb - SC restituirebbe un vettore nullo.
+    // Come soluzione dunque, in questa circostanza, si sposta il centro della sfera
+    // in world space traslandolo verso il lato del box con il quale ha penetrazione
+    // minima; dunque, una volta effettuato lo spostamento, si effettua il contact
+    // generation tra il box e la nuova posizione della sfera.
 
-    float ms_closest_point_x = std::min( coll_B.width/2, std::max( -coll_B.width/2 , ms_sphere_center_x ) );
-    float ms_closest_point_y = std::min( coll_B.height/2, std::max( -coll_B.height/2, ms_sphere_center_y));
-
-    // Check if sphere center is not inside the box
     if(     ms_sphere_center_x > -coll_B.width/2 && ms_sphere_center_x < coll_B.width/2 
         &&  ms_sphere_center_y > -coll_B.height/2 && ms_sphere_center_y < coll_B.height/2
     ){
-        // In that case push the sphere center to the closest border plus an epsilon
+        
+        // Fattore correttivo da aggiungere alla traslazione della sfera per evitare
+        // che il centro della sfera finisca esattamente sul bordo del box 
+        // ( Circostanza che ha le stesse conseguenze di avere il centro della sfera
+        // all'interno del box )
         float epsilon = coll_S.radius/2;
 
+        // Controlla, in model space, la distanza tra il centro della sfera (in ms) 
+        // e ciascun lato del box
         float left_dist = abs( -coll_B.width/2 - ms_sphere_center_x );
         float top_dist = abs( coll_B.height/2 - ms_sphere_center_y );
         float right_dist = abs( coll_B.width/2 - ms_sphere_center_x );
         float bottom_dist = abs ( -coll_B.height/2 - ms_sphere_center_y );
 
+        // Trasla le coordinate del centro della sfera ms_new_sphere_center_x e 
+        // ms_new_sphere_center_y fuori dal box, verso il lato del box che ha
+        // distanza minima dalla vecchia posizione della sfera.
         float ms_new_sphere_center_x = ms_sphere_center_x;
         float ms_new_sphere_center_y = ms_sphere_center_y;
 
@@ -506,14 +518,25 @@ physic::dim2::contact_data physic::dim2::generate_spherebox_contactdata_norotati
             ms_new_sphere_center_y = - coll_B.height/2 - epsilon;
         }
 
+        // Computa in world space le nuove coordinate del centro della sfera
+        // ms_new_sphere_center_x e ms_new_sphere_center_y
         vec4 ms_new_sphere_center = {ms_new_sphere_center_x, ms_new_sphere_center_y, 0, 1};
         vec4 ws_new_sphere_center;
         mat4x4_mul_vec4(ws_new_sphere_center, box_model_matrix, ms_new_sphere_center);
+
+        // Sposta la sfera nelle nuove coordinate
         S.pos_x = ws_new_sphere_center[0];
         S.pos_y = ws_new_sphere_center[1];
 
+        // Chiama la generazione del contatto tra il box e la sfera adesso traslata
         return generate_spherebox_contactdata_norotation(S, B, coll_S, coll_B);
     }
+
+    // ------------------------------------------------------------------------------------
+    // Find the closest point on the box from the sphere center by clamping the coordinates
+
+    float ms_closest_point_x = std::min( coll_B.width/2, std::max( -coll_B.width/2 , ms_sphere_center_x ) );
+    float ms_closest_point_y = std::min( coll_B.height/2, std::max( -coll_B.height/2, ms_sphere_center_y));
 
     // ------------------------------------------------------------------------------------
     // Find the distance
@@ -1382,24 +1405,33 @@ std::vector<std::vector<physic::dim2::collision_log>*> physic::dim2::framesColli
 
 void physic::dim2::InitFrameCollisionLogs(int n_frames){
 
+    // Alloca un vettore per ciascun differente frames di cui si vuole tenere traccia e crea un
+    // puntatore all'interno di framesCollisionLogs
     for (int i = 0; i < n_frames; i++){
         framesCollisionLogs.push_back(new std::vector<physic::dim2::collision_log>);
     }
 
+    // Inizializza il currentFrameCollisionLogs con il vettore in testa a framesCollisionLogs
     currentFrameCollisionLogs = framesCollisionLogs[0];
 
 }
 
 void physic::dim2::UpdateFrameCollisionLogs(){
 
+    // Prendi il numero di frames di cui si sta tenendo traccia
     int n_frames = framesCollisionLogs.size();
+
+    // Fai puntare currentFrameCollisionLogs al vettore presente nell'ultimo slot di framesCollisionLogs
     currentFrameCollisionLogs = framesCollisionLogs[n_frames-1];
+    
+    // Svuota la lista dei contatti del frame più vecchio
     (*currentFrameCollisionLogs).clear();
 
-    // Shift all collision logs on the right
+    // Sposta tutti i vettori verso destra
     for (int i = n_frames-1; i > 0; i --){
         framesCollisionLogs[i] = framesCollisionLogs[i-1];
     }
 
+    // Allinea franesCollisionLogs[0] con currentFrameCollisionLogs
     framesCollisionLogs[0] = currentFrameCollisionLogs;
 }

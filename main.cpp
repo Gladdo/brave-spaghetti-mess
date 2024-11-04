@@ -165,12 +165,17 @@ int main(void){
         
         //=================================================================================================================
 
+        // DESCRIPTION: 
+        // Controlla specifiche condizioni che eventualmente bloccano l'esecuzione della simulazione e
+        // fanno il print dello stato di gioco degli ultimi n_frames (dei dati inerenti ai box, alle sfere e delle
+        // collisioni)
+
         { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             
             if (halt_condition == false) {
 
-                /* // ----------------------------------------
+                // ----------------------------------------
                 // BOXES
 
                 // For every box game object, check if position or velocity are within bounds
@@ -218,10 +223,12 @@ int main(void){
                         halt_condition = true;
                     }
 
-                } */
+                }
 
             }
 
+            // Se qualche condizione di halt è stata triggerata, interrompi la simulazione e, se non è già stato
+            // stampato (log_rinted == false), effettua il print dei log sullo stato di gioco negli ultimi n_frames
             if (halt_condition) {                
 
                 simulation_run = false;
@@ -231,7 +238,7 @@ int main(void){
                     std::cout << "HALT CONDITION TRIGGERED - Printing game state log" << std::endl << std::flush;
 
                     // Print the log
-                    /* print_GameStateLog(); */
+                    print_GameStateLog();
                     log_printed = true;
                 }
 
@@ -404,7 +411,7 @@ int main(void){
        
         //=================================================================================================================
 
-        //                           PHYSIC UPDATE: Generate contact data
+        //                                  PHYSIC UPDATE: Generate contact data
         
         //=================================================================================================================
 
@@ -562,11 +569,14 @@ int main(void){
 
         //=================================================================================================================
         
+        // DESCRIPTION:
+        // Aggiorna i buffer contenenti i dati dello stato di gioco degli ultimi n_frames.
+
         { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             if(simulation_run == true && halt_condition == false){
-/*                 physic::dim2::UpdateFrameCollisionLogs();
-                game_data::UpdateFrameStates(); */
+                physic::dim2::UpdateFrameCollisionLogs();
+                game_data::UpdateFrameStates();
             }
            
 

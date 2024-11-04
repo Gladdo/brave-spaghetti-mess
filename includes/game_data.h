@@ -65,8 +65,19 @@ namespace game_data{
     // Box Gameobject
     
     extern std::vector<BoxGameObject> boxGameobjects;
+
+    // Contiene una fotografia dello stato di gioco per ciascun box presente in gioco.
+    // L'utente, tramite appositi input, può salvare al suo interno la fotografia dello stato di 
+    // gioco o sovrascrivere lo stato di gioco con i dati al suo interno. 
+    // Invariant: Il numero di elementi all'interno di questo vettore dev'essere tenuto allineato con
+    // il numero di box presenti nel vettore boxGameobjects.
     extern std::vector<BoxGameObject> stashedBoxGameobjects;
 
+    // Vettore di vettori; il vettore i-esimo contiene lo stato di tutti i box nell'i-esimo frame
+    // precedente a quello attuale.
+    // Serve per ottenere i log dello stato di gioco degli ultimi n-frames
+    // Invariant: Il numero di box in ogni vettore dev'essere mantenuto allineato con il numero di box
+    // presenti nel vettore boxGameobjects.
     extern std::vector<std::vector<BoxGameObject>*> frameStatesBoxGameObjects;
  
     void AddBoxGameObject();
@@ -75,8 +86,19 @@ namespace game_data{
     // Sphere Gameobject
 
     extern std::vector<SphereGameObject> sphereGameobjects;
+
+    // Contiene una fotografia dello stato di gioco per ciascuna sfera presente in gioco.
+    // L'utente, tramite appositi input, può salvare al suo interno la fotografia dello stato di 
+    // gioco o sovrascrivere lo stato di gioco con i dati al suo interno.
+    // Invariant: Il numero di elementi all'interno di questo vettore dev'essere tenuto allineato con
+    // il numero di box presenti nel vettore sphereGameobjects.
     extern std::vector<SphereGameObject> stashedSphereGameobjects;
 
+    // Vettore di vettori; il vettore i-esimo contiene lo stato di tutte le sfere nell'i-esimo frame
+    // precedente a quello attuale.
+    // Serve per ottenere i log dello stato di gioco degli ultimi n-frames.
+    // Invariant: Il numero di sfere in ogni vettore dev'essere mantenuto allineato con il numero di sfere
+    // presenti nel vettore sphereGameobjects.
     extern std::vector<std::vector<SphereGameObject>*> frameStatesSphereGameobjects;
 
     void AddSphereGameObject();
@@ -93,8 +115,12 @@ namespace game_data{
     // Functions
 
     void InitFrameStates(int n_frames);
+
+    // Shifta verso destra i vettori presenti in frameStatesBoxGameObjects e frameStatesSphereGameobjects.
+    // Sposta i rispettivi ultimi vettori nelle rispettive teste.
+    // Copia boxGameobjects nel vettore in testa a frameStatesBoxGameObjects e copia sphereGameobjects nel
+    // vettore in esta a frameStatesSphereGameobjects
     void UpdateFrameStates();
-    void PrintGameState();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                       UTILITY GAME DATA DECLARATIONS
