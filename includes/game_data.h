@@ -67,6 +67,8 @@ namespace game_data{
     extern std::vector<BoxGameObject> boxGameobjects;
     extern std::vector<BoxGameObject> stashedBoxGameobjects;
 
+    extern std::vector<std::vector<BoxGameObject>*> frameStatesBoxGameObjects;
+ 
     void AddBoxGameObject();
 
     // ------------------------------------------------------------------------------------
@@ -74,6 +76,8 @@ namespace game_data{
 
     extern std::vector<SphereGameObject> sphereGameobjects;
     extern std::vector<SphereGameObject> stashedSphereGameobjects;
+
+    extern std::vector<std::vector<SphereGameObject>*> frameStatesSphereGameobjects;
 
     void AddSphereGameObject();
 
@@ -84,6 +88,13 @@ namespace game_data{
     extern std::vector<HalfSpaceGameObject> stashedHalfSpaceGameobjects;
 
     void AddHalfspaceObject();
+
+    // ------------------------------------------------------------------------------------
+    // Functions
+
+    void InitFrameStates(int n_frames);
+    void UpdateFrameStates();
+    void PrintGameState();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                       UTILITY GAME DATA DECLARATIONS

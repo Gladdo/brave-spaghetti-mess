@@ -481,6 +481,40 @@ physic::dim2::contact_data physic::dim2::generate_spherebox_contactdata_norotati
     float ms_closest_point_x = std::min( coll_B.width/2, std::max( -coll_B.width/2 , ms_sphere_center_x ) );
     float ms_closest_point_y = std::min( coll_B.height/2, std::max( -coll_B.height/2, ms_sphere_center_y));
 
+    // Check if sphere center is not inside the box
+    if(     ms_sphere_center_x > -coll_B.width/2 && ms_sphere_center_x < coll_B.width/2 
+        &&  ms_sphere_center_y > -coll_B.height/2 && ms_sphere_center_y < coll_B.height/2
+    ){
+        // In that case push the sphere center to the closest border plus an epsilon
+        float epsilon = coll_S.radius/2;
+
+        float left_dist = abs( -coll_B.width/2 - ms_sphere_center_x );
+        float top_dist = abs( coll_B.height/2 - ms_sphere_center_y );
+        float right_dist = abs( coll_B.width/2 - ms_sphere_center_x );
+        float bottom_dist = abs ( -coll_B.height/2 - ms_sphere_center_y );
+
+        float ms_new_sphere_center_x = ms_sphere_center_x;
+        float ms_new_sphere_center_y = ms_sphere_center_y;
+
+        if(left_dist < top_dist && left_dist < right_dist && left_dist < bottom_dist){
+            ms_new_sphere_center_x =  - coll_B.width/2 - epsilon;
+        }else if(top_dist < right_dist && top_dist < bottom_dist){
+            ms_new_sphere_center_y = coll_B.height/2 + epsilon;
+        }else if(right_dist < bottom_dist){
+            ms_new_sphere_center_x = coll_B.width/2 + epsilon;
+        }else{
+            ms_new_sphere_center_y = - coll_B.height/2 - epsilon;
+        }
+
+        vec4 ms_new_sphere_center = {ms_new_sphere_center_x, ms_new_sphere_center_y, 0, 1};
+        vec4 ws_new_sphere_center;
+        mat4x4_mul_vec4(ws_new_sphere_center, box_model_matrix, ms_new_sphere_center);
+        S.pos_x = ws_new_sphere_center[0];
+        S.pos_y = ws_new_sphere_center[1];
+
+        return generate_spherebox_contactdata_norotation(S, B, coll_S, coll_B);
+    }
+
     // ------------------------------------------------------------------------------------
     // Find the distance
 
@@ -499,8 +533,14 @@ physic::dim2::contact_data physic::dim2::generate_spherebox_contactdata_norotati
     mat4x4_mul_vec4(ws_closest_point, box_model_matrix, ms_closest_point);
     vec2 ws_normal = { ws_closest_point[0] - ws_sphere_center[0], ws_closest_point[1] - ws_sphere_center[1] };
     float length = vec2_len(ws_normal);
+
     ws_normal[0] = ws_normal[0] / length;
     ws_normal[1] = ws_normal[1] / length;
+
+    // DEBUG
+    if(ws_normal[0] != ws_normal[0] || ws_normal[1] != ws_normal[1]){
+        std::cout<< " NAN(IND) VALUE TRIGGERED! Length value: " << length <<std::endl << std::flush;
+    }
 
     contact.ms_qa_x = ms_closest_point_x;
     contact.ms_qa_y = ms_closest_point_y;
@@ -879,8 +919,10 @@ void physic::dim2::solve_velocity(contact_data& contact){
 
     rigidbody* rbB_ptr;
 
-    // If contact.rb_b == nullptr it means that the B object is a static object
+    // If contact.rb_b == nullptr it means that the B object is a static object (ie an half space)
+    // Quindi simula il contatto di A con un rigidbody B fittizio di massa e momento d'inerzia enormi 
     if(contact.rb_b == nullptr){
+        tmpRb.owner_gameobject_id = -2; // Ad indicare il fatto che i dati del rigidbody B non appartengono a nessun game object
         tmpRb.angle = 0;
         tmpRb.I = 100000000;
         tmpRb.m = 100000000;
@@ -970,7 +1012,7 @@ void physic::dim2::solve_velocity(contact_data& contact){
     // ------------------------------------------------------------------------------------
     // Find the linear velocity effect on qb caused by rbB angular velocity:
 
-    // Find the linear velocity on qa caused by the angular velocity of the rigid body, 
+    // Find the linear velocity on qb caused by the angular velocity of the rigid body, 
     // in the model space of the rigidbody: (from v = w ∧ r )
     //      
     //  ○   local_v = rbB.w ∧ q_b
@@ -1247,6 +1289,49 @@ void physic::dim2::solve_velocity(contact_data& contact){
     std::cout << "vc_change_per_imp_unit: " << vc_change_per_imp_unit << std::endl << std::flush;
     std::cout<< "Impulse Magnitude: " << imp.mag << std::endl << std::flush; */
 
+    collision_log new_collision_log;
+    
+    new_collision_log.ms_va_x_ang = local_va_x;
+    new_collision_log.ms_va_y_ang = local_va_y;
+    new_collision_log.va_x = va_x;
+    new_collision_log.va_y = va_y;
+
+    new_collision_log.ms_vb_x_ang = local_vb_x;
+    new_collision_log.ms_vb_y_ang = local_vb_y;
+    new_collision_log.vb_x = vb_x;
+    new_collision_log.vb_y = vb_y;
+
+    new_collision_log.va_n = va_n;
+    new_collision_log.vb_n = vb_n;
+    
+    new_collision_log.vc = vc;
+    new_collision_log.vc_s = vc_s;
+    
+    new_collision_log.actual_vc_change = actual_vc_change;
+
+    new_collision_log.lin_dva_n = lin_dva_n;
+    new_collision_log.lin_dvb_n = lin_dvb_n;
+    new_collision_log.linear_effect = linear_effect;
+
+    new_collision_log.ua = ua;
+    new_collision_log.dwa = dwa;
+    new_collision_log.dva_x = dva_x;
+    new_collision_log.dva_y = dva_y;
+    new_collision_log.ang_dva_n = ang_dva_n;
+    
+    new_collision_log.ub = ub;
+    new_collision_log.dwb = dwb;
+    new_collision_log.dvb_x = dvb_x;
+    new_collision_log.dvb_y = dvb_y;
+    new_collision_log.ang_dvb_n = ang_dvb_n;
+
+    new_collision_log.angular_effect = angular_effect;
+    
+    new_collision_log.vc_change_per_imp_unit = vc_change_per_imp_unit;
+    new_collision_log.impulse_magnitude = imp.mag;
+
+    (*currentFrameCollisionLogs).push_back(new_collision_log);
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1286,4 +1371,35 @@ void physic::dim2::solve_interpenetration(contact_data& contact){
     rbA.pos_y += disp_y * mass_factor_A;
     rbB.pos_x -= disp_x * mass_factor_B;
     rbB.pos_y -= disp_y * mass_factor_B;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                              DEBUG - Collision Logs
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::vector<physic::dim2::collision_log>* physic::dim2::currentFrameCollisionLogs;
+std::vector<std::vector<physic::dim2::collision_log>*> physic::dim2::framesCollisionLogs;
+
+void physic::dim2::InitFrameCollisionLogs(int n_frames){
+
+    for (int i = 0; i < n_frames; i++){
+        framesCollisionLogs.push_back(new std::vector<physic::dim2::collision_log>);
+    }
+
+    currentFrameCollisionLogs = framesCollisionLogs[0];
+
+}
+
+void physic::dim2::UpdateFrameCollisionLogs(){
+
+    int n_frames = framesCollisionLogs.size();
+    currentFrameCollisionLogs = framesCollisionLogs[n_frames-1];
+    (*currentFrameCollisionLogs).clear();
+
+    // Shift all collision logs on the right
+    for (int i = n_frames-1; i > 0; i --){
+        framesCollisionLogs[i] = framesCollisionLogs[i-1];
+    }
+
+    framesCollisionLogs[0] = currentFrameCollisionLogs;
 }

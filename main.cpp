@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <iostream>
+#include <fstream>
 #include <chrono>
 #include <math.h>
 
@@ -20,6 +21,8 @@ GLFWwindow* window;
 
 auto previousTime = std::chrono::high_resolution_clock::now();
 std::chrono::duration<float> delta_time;
+
+void print_GameStateLog();
 
 int main(void){
 
@@ -95,6 +98,8 @@ int main(void){
     // Flow controll variables
 
     bool simulation_run = true;
+    bool halt_condition = false;
+    bool log_printed = false;
 
     // ====================================================================================
     // Initialize scenario
@@ -116,6 +121,12 @@ int main(void){
     game_data::halfSpaceGameobjects[3].coll.origin_offset = - 15.5;
     game_data::halfSpaceGameobjects[3].coll.normal_x = 1;
     game_data::halfSpaceGameobjects[3].coll.normal_y = 0;
+
+    // ====================================================================================
+    // Initialize debug data
+
+    physic::dim2::InitFrameCollisionLogs(8);
+    game_data::InitFrameStates(8);
     
     while (!glfwWindowShouldClose(window))
     { 
@@ -146,6 +157,88 @@ int main(void){
                 }
             }
 
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //=================================================================================================================
+    
+        //                                                  DEBUG LOG                                                      
+        
+        //=================================================================================================================
+
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            
+            if (halt_condition == false) {
+
+                /* // ----------------------------------------
+                // BOXES
+
+                // For every box game object, check if position or velocity are within bounds
+                for( int i = 0; i < game_data::boxGameobjects.size(); i++){
+                
+                    game_data::BoxGameObject& box_go = game_data::boxGameobjects[i]; 
+
+                    // Check velocity
+                    if( box_go.rb.vel_x > 1000 || box_go.rb.vel_x < -1000 || box_go.rb.vel_y > 1000 || box_go.rb.vel_y < -1000 ){
+                        halt_condition = true;
+                    }
+            
+                    // Check position
+                    if( box_go.world_x_pos > 1000 || box_go.world_x_pos < -1000 || box_go.world_y_pos > 1000 || box_go.world_y_pos < -1000){
+                        halt_condition = true;
+                    }
+
+                    // Check for value indetermination
+                    if ( box_go.world_x_pos != box_go.world_x_pos || box_go.world_y_pos != box_go.world_y_pos 
+                    || box_go.rb.vel_x != box_go.rb.vel_x || box_go.rb.vel_y != box_go.rb.vel_y) {
+                        halt_condition = true;
+                    }
+
+                }
+
+                // ----------------------------------------
+                // SPHERES
+
+                for (int i = 0; i < game_data::sphereGameobjects.size(); i ++){
+
+                    game_data::SphereGameObject& sphere_go = game_data::sphereGameobjects[i];
+
+                    // Check velocity
+                    if ( sphere_go.rb.vel_x > 1000 || sphere_go.rb.vel_y < -1000 || sphere_go.rb.vel_y > 1000 || sphere_go.rb.vel_y < -1000){
+                        halt_condition = true;
+                    }
+
+                    // Check position
+                    if ( sphere_go.world_x_pos > 1000 || sphere_go.world_x_pos < -1000 || sphere_go.world_y_pos > 1000 || sphere_go.world_y_pos < -1000) {
+                        halt_condition = true;
+                    }
+
+                    if ( sphere_go.world_x_pos != sphere_go.world_x_pos || sphere_go.world_y_pos != sphere_go.world_y_pos 
+                    || sphere_go.rb.vel_x != sphere_go.rb.vel_x || sphere_go.rb.vel_y != sphere_go.rb.vel_y) {
+                        halt_condition = true;
+                    }
+
+                } */
+
+            }
+
+            if (halt_condition) {                
+
+                simulation_run = false;
+
+                if (log_printed == false) {
+
+                    std::cout << "HALT CONDITION TRIGGERED - Printing game state log" << std::endl << std::flush;
+
+                    // Print the log
+                    /* print_GameStateLog(); */
+                    log_printed = true;
+                }
+
+            }
+
+            
+    
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         //=================================================================================================================
@@ -462,6 +555,22 @@ int main(void){
             }
 
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //=================================================================================================================
+
+        //                                          UPDATE DEBUG FRAME LOGS
+
+        //=================================================================================================================
+        
+        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            if(simulation_run == true && halt_condition == false){
+/*                 physic::dim2::UpdateFrameCollisionLogs();
+                game_data::UpdateFrameStates(); */
+            }
+           
+
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
         //=================================================================================================================
 
@@ -510,7 +619,6 @@ int main(void){
                     game_data::draggedGameObject.rb->pos_x = curr_cursor_world_x;
                     game_data::draggedGameObject.rb->pos_y = curr_cursor_world_y;                 
                 }
-
             }
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
@@ -948,6 +1056,116 @@ int main(void){
     } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     return 0;
+}
+
+void print_GameStateLog(){
+    
+    std::ofstream log_file;
+    log_file.open("frames_log.txt");
+
+    int tot_frames = game_data::frameStatesBoxGameObjects.size();
+
+    // Print the logs of the game state for the previous tot_frames, one frame at a time
+
+    for ( int n_frame = 0; n_frame < tot_frames; n_frame ++ ){
+        
+        log_file << "====================================================================================" << std::endl;
+        log_file << "                                       FRAME " << n_frame << std::endl;
+        log_file << "====================================================================================" << std::endl << std::endl;
+        
+        // -------------------------------------------------
+        // BOXES GAME OBJECT STATE PRINT
+
+        std::vector<game_data::BoxGameObject>& boxGameObjects = *game_data::frameStatesBoxGameObjects[n_frame];
+
+        for( int i = 0; i < boxGameObjects.size(); i ++){
+            
+            game_data::BoxGameObject& box_go = boxGameObjects[i]; 
+
+            log_file << "--------------------------" << std::endl;
+            log_file << "BOX " << box_go.gameobject_id << std::endl;
+            log_file << "--------------------------" << std::endl;
+            log_file << "Pos: " << box_go.world_x_pos << " " << box_go.world_y_pos << std::endl;
+            log_file << "Vel: " << box_go.rb.vel_x << " " << box_go.rb.vel_y << std::endl;
+            log_file << "Ang Vel: " << box_go.rb.w << std::endl;
+            log_file << "" << std::endl;
+
+        } 
+
+        // -------------------------------------------------
+        // SPHERES GAME OBJECT STATE PRINT
+
+        std::vector<game_data::SphereGameObject>& sphereGameObjects = *game_data::frameStatesSphereGameobjects[n_frame];
+
+        for (int i = 0; i < sphereGameObjects.size(); i++){
+
+            game_data::SphereGameObject& sphere_go = sphereGameObjects[i];
+
+            log_file << "--------------------------" << std::endl;
+            log_file << "SPHERE " << sphere_go.gameobject_id << std::endl;
+            log_file << "--------------------------" << std::endl;
+            log_file << "Pos: " << sphere_go.world_x_pos << " " << sphere_go.world_y_pos << std::endl;
+            log_file << "Vel: " << sphere_go.rb.vel_x << " " << sphere_go.rb.vel_y << std::endl;
+            log_file << "Ang Vel: " << sphere_go.rb.w << std::endl;
+            log_file << "" << std::endl;
+
+        }
+
+        log_file << "------------------------------------------------------------------------------" << std::endl;
+        log_file << "                               FRAME COLLISIONS" << std::endl;
+        log_file << "------------------------------------------------------------------------------" << std::endl << std::endl;
+
+        // -------------------------------------------------
+        // FRAME COLLISIONS PRINT
+        
+        std::vector<physic::dim2::collision_log>& collisions = *physic::dim2::framesCollisionLogs[n_frame];
+
+        for (int i = 0; i < collisions.size(); i++ ) {
+
+            physic::dim2::collision_log& coll_log = collisions[i];
+
+            log_file << "--------------------------" << std::endl;
+            log_file << "Collision " << i << std::endl;
+            log_file << "--------------------------" << std::endl;
+            log_file << "" << std::endl;
+
+            std::cout << "ms_va_x_ang: " << coll_log.ms_va_x_ang << std::endl;
+            std::cout << "ms_va_y_ang: " << coll_log.ms_va_y_ang << std::endl;
+            std::cout << "va_x: " << coll_log.va_x << std::endl;
+            std::cout << "va_y: " << coll_log.va_y << std::endl;
+            std::cout << "local_vb_x: " << coll_log.ms_vb_x_ang << std::endl;
+            std::cout << "local_vb_y: " << coll_log.ms_va_y_ang << std::endl;
+            std::cout << "vb_x: " << coll_log.vb_x << std::endl;
+            std::cout << "vb_y: " << coll_log.vb_y << std::endl;
+
+            std::cout << "va_n: " << coll_log.va_n << std::endl;
+            std::cout << "vb_n: " << coll_log.vb_n << std::endl;
+            std::cout << "vc: " << coll_log.vc << std::endl;
+            std::cout << "vc_s: " << coll_log.vc_s << std::endl;
+            std::cout << "actual_vc_change: " << coll_log.actual_vc_change << std::endl;
+            std::cout << "lin_dva_n: " << coll_log.lin_dva_n << std::endl;
+            std::cout << "lin_dvb_n: " << coll_log.lin_dvb_n << std::endl;
+            std::cout << "linear_effect: " << coll_log.linear_effect << std::endl;
+            std::cout << "ua: " << coll_log.ua << std::endl;
+            std::cout << "dwa: " << coll_log.dwa << std::endl;
+            std::cout << "dva_x: " << coll_log.dva_x << std::endl;
+            std::cout << "dva_y: " << coll_log.dva_y << std::endl;
+            std::cout << "ang_dva_n: " << coll_log.ang_dva_n << std::endl;
+            std::cout << "ub: " << coll_log.ub << std::endl;
+            std::cout << "dwb: " << coll_log.dwb << std::endl;
+            std::cout << "dvb_x: " << coll_log.dvb_x << std::endl;
+            std::cout << "dvb_y: " << coll_log.dvb_y << std::endl;
+            std::cout << "ang_dvb_n: " << coll_log.ang_dvb_n << std::endl;
+            std::cout << "angular_effect: " << coll_log.angular_effect << std::endl;
+            std::cout << "vc_change_per_imp_unit: " << coll_log.vc_change_per_imp_unit << std::endl;
+            std::cout<< "Impulse Magnitude: " << coll_log.impulse_magnitude << std::endl;
+            log_file << "" << std::endl;
+            log_file << "" << std::endl;
+            
+        }
+
+    }
+
 }
 
 

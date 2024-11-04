@@ -27,7 +27,11 @@ namespace physic{
         // ====================================================================================
         // Data structs:
 
-        struct rigidbody{        
+        struct rigidbody{
+
+            // DEBUG
+            int owner_gameobject_id;
+
             // Linear quantities    
             float pos_x, pos_y;
             float vel_x, vel_y;
@@ -163,6 +167,56 @@ namespace physic{
         void contact_solver_dispatcher();
         void solve_velocity(contact_data& contact);
         void solve_interpenetration(contact_data& contact);
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                              DEBUG
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+        struct collision_log{
+
+            int rba_go_id;                                  // Id del game object a cui appartiene il rbA
+            int rbb_go_id;                                  // Id del game object a cui appartiene il rbB
+
+            float ms_va_x_ang, ms_va_y_ang;                 // Linear velocity of qa caused by angular velocity of rigid body A, specified in model space
+            float va_x, va_y;                               // Total linear velocity of qa in world space, given by the sum of the rigid body A center of mass velocity and the previous velocity transformed in world space
+            float ms_vb_x_ang, ms_vb_y_ang;                 // Linear velocity of qb caused by angular velocity of rigid body B, specified in model space
+            float vb_x, vb_y;                               // Total linear velocity of qb in world space, given by the sum of the rigid body B center of mass velocity and the previous velocity transformed in world space
+  
+            float va_n;                                     // Projection of qa world space velocity onto the normal of contact
+            float vb_n;                                     // Projection of qb world space velocity onto the normal of contact
+
+            float vc;                                       // Scalar representing the relative velocity, along the normal of contact, between the two points qa and qb; it represent the speed at which they're connecting
+            float vc_s;                                     // Closing velocity after the collision ( simply: vc_s = -0.98 * vc )
+            
+            float actual_vc_change;                         // The delta between vc and vc_s
+
+            float lin_dva_n;                                // Given the properties of RB.A, this value specify how much a unit impulse impact its linear velocity (as a scalar, without a specific direction)
+            float lin_dvb_n; 
+            float linear_effect;                            // Quantità che specifica la variazione della closing velocity tra qa e qb se al contatto l'impulso generato fosse unitario
+
+            float ua;                                       // Momento di impulso rispetto a qa di un'impulso unitario applicato su di esso
+            float dwa;                                      // Variazione nella velocità angolare del RB.A a causa del precedente momento di impulso
+            float dva_x, dva_y;                             // Variazione della velocità LINEARE del punto qa, specificata in model space, dovuta alla variazione della velocità di rotazione di RB.A (dwa)
+            float ang_dva_n;                                // Proiezione della precedente variazione lungo la normale di contatto
+
+            float ub;
+            float dwb;
+            float dvb_x, dvb_y;
+            float ang_dvb_n;
+            
+            float angular_effect;                           // Quantità che specifica la variazione della closing velocity tra qa e qb se il loro contatto fosse puramente rotazionale e causato da un impulso unitario
+            
+            float vc_change_per_imp_unit;
+            float impulse_magnitude;                        // Modulo dell'impulso risultante dal contatto (trovato in modo tale che giustifichi l'actual_vc_change trovato prima)
+        };
+
+        extern std::vector<collision_log>* currentFrameCollisionLogs;
+        extern std::vector<std::vector<collision_log>*> framesCollisionLogs; // Contiene i log delle collisioni degli ultimi n frames
+
+        void InitFrameCollisionLogs(int n_frames);
+        void UpdateFrameCollisionLogs();
+              
+
     }
 }
 

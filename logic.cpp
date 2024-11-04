@@ -228,7 +228,7 @@ void inputs::update(){
     ///////////////////////////////////////////////////////////////////////////////////////
     // Load stashed scenario configuration button
 
-        int lb_state = glfwGetKey(window, GLFW_KEY_L);
+    int lb_state = glfwGetKey(window, GLFW_KEY_L);
 
     if( load_stashed_scenario_configuration_button == RELEASE){
         load_stashed_scenario_configuration_button = IDLE;
