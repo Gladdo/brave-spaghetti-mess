@@ -67,15 +67,15 @@ namespace game_data{
     extern std::vector<BoxGameObject> boxGameobjects;
 
     // Contiene una fotografia dello stato di gioco per ciascun box presente in gioco.
-    // L'utente, tramite appositi input, può salvare al suo interno la fotografia dello stato di 
-    // gioco o sovrascrivere lo stato di gioco con i dati al suo interno. 
+    // L'utente, tramite appositi input, può salvare al suo interno lo stato di gioco del frame corrente (save) 
+    // oppure sovrascrivere lo stato di gioco corrente con i dati nella stash (load).
     // Invariant: Il numero di elementi all'interno di questo vettore dev'essere tenuto allineato con
     // il numero di box presenti nel vettore boxGameobjects.
     extern std::vector<BoxGameObject> stashedBoxGameobjects;
 
     // Vettore di vettori; il vettore i-esimo contiene lo stato di tutti i box nell'i-esimo frame
     // precedente a quello attuale.
-    // Serve per ottenere i log dello stato di gioco degli ultimi n-frames
+    // Serve per stampare i log dello stato di gioco degli ultimi n-frames
     // Invariant: Il numero di box in ogni vettore dev'essere mantenuto allineato con il numero di box
     // presenti nel vettore boxGameobjects.
     extern std::vector<std::vector<BoxGameObject>*> frameStatesBoxGameObjects;
@@ -88,15 +88,15 @@ namespace game_data{
     extern std::vector<SphereGameObject> sphereGameobjects;
 
     // Contiene una fotografia dello stato di gioco per ciascuna sfera presente in gioco.
-    // L'utente, tramite appositi input, può salvare al suo interno la fotografia dello stato di 
-    // gioco o sovrascrivere lo stato di gioco con i dati al suo interno.
+    // L'utente, tramite appositi input, può salvare al suo interno lo stato di gioco del frame corrente (save) 
+    // oppure sovrascrivere lo stato di gioco corrente con i dati nella stash (load).
     // Invariant: Il numero di elementi all'interno di questo vettore dev'essere tenuto allineato con
     // il numero di box presenti nel vettore sphereGameobjects.
     extern std::vector<SphereGameObject> stashedSphereGameobjects;
 
     // Vettore di vettori; il vettore i-esimo contiene lo stato di tutte le sfere nell'i-esimo frame
     // precedente a quello attuale.
-    // Serve per ottenere i log dello stato di gioco degli ultimi n-frames.
+    // Serve per stampare i log dello stato di gioco degli ultimi n-frames.
     // Invariant: Il numero di sfere in ogni vettore dev'essere mantenuto allineato con il numero di sfere
     // presenti nel vettore sphereGameobjects.
     extern std::vector<std::vector<SphereGameObject>*> frameStatesSphereGameobjects;
