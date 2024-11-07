@@ -124,100 +124,40 @@ namespace rendering{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////                                     
 
     //=================================================================================================================
-    //                                          Quad Texture Shader 
+    //                                         DebugBox Shader 
     //=================================================================================================================
     //
-    //  Metodi e dati per gestire uno shader capace di renderizzare un quad con una texture
-    //  applicata su di esso.
-    //  This code manage the GPU resources for rendering with the following shader 
-    //  program:
-    //  (The code for the shader is inside the files tex_vertex_shader_source.txt and 
-    //  tex_fragment_shader_source.txt)
-    //
-    // -------------------------------------------------------------------------|
-    //  VERTEX SHADER: 
-    //  #version 330
-    //  uniform mat4 MVP;
-    //  uniform int outline;
-    //
-    //  in vec2 vTexCoord;
-    //  in vec2 vPos;
-    //
-    //  out vec2 texCoord;
-    //  out vec2 fragPos;
-    //
-    //  void main()
-    //  {
-    //
-    //      float border_width = 0.1f;
-    //      float outline_scale = 1 + border_width * outline; 
-    //
-    //      gl_Position = MVP * vec4(vPos * outline_scale, 0.0, 1.0);
-    //      texCoord = vTexCoord;
-    //      fragPos = vPos * outline_scale;
-    //  }
-    //
-    // -------------------------------------------------------------------------|
-    //  FRAGMENT SHADER:
-    //  #version 330
-    //  out vec4 FragColor;
-    //
-    //  in vec2 texCoord;
-    //  in vec2 fragPos;
-    //
-    //  uniform sampler2D texUnit;
-    //
-    //  void main()
-    //  {	
-    //	    if( fragPos.y > -0.5 &&  fragPos.y < 0.5 && fragPos.x > -0.5 && fragPos.x < 0.5){
-    //		    FragColor = texture(texUnit, texCoord);
-    //	    }else{
-    //		    FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-    //	    }
-    //  }
-    //
-    // Uniform utilizzate da questo shader:
-    //
-    //      - MVP:      specifica la matrice di trasformazione da applicare a tutti i
-    //                  vertici del quad
-    //      - outline:  specifica se il quad dev'essere contornato
-    //      - texUnit:  specifica l'unità texture da cui fare il sample dei pixel da applicare
-    //                  all'oggetto renderizzato; è necessario aver caricato una texture 
-    //                  su tale unità per utilizzarla nel rendering
-    //
-    namespace quad_texture_shader{
+    namespace debugbox_shader{
 
         // -------------------------------------------------------------------------|
-        // Dati per gestire la mesh quadrata con cui lo shader renderizza
+        // Dati dei vertici
 
-        struct gpu_mesh_data_buffers{
-            GLuint mesh_vertexes_data_buffer_id;                    // Id del buffer sulla GPU contenente i vertici della mesh su cui viene poi renderizzata la texture
-            GLuint mesh_vertex_attribute_pointers_buffer_id;        // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
-            int mesh_vertex_number;                                 // Numero di vertici nella mesh
+        struct gpu_vertex_buffer{
+            GLuint gpu_data_buffer_id;                      // Id del buffer sulla GPU contenente i dati sui vertici
+            GLuint gpu_pointers_buffer_id;                  // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
+            int vertex_number;                              // Numero dei vertici presenti nel buffer
         };
 
-        extern gpu_mesh_data_buffers quad_mesh_data_buffers;
+        extern gpu_vertex_buffer vertex_attributes_buffer;
 
         // -------------------------------------------------------------------------|
-        // Shader Elements Ids 
+        // Id delle variabili dello shader
 
         extern GLuint program_id;                          // Id dello shader program presente sulla GPU
 
         extern GLint mvp_location;                         // Id della variabile uniform MVP nel vertexshader
         extern GLint outline_location;                     // Id della variabile uniform outline nel vertexshader
-        extern GLint tex_unit_location;                    // Id della variabile uniform texUnit nel fragmentshader
         extern GLint screen_width_ratio_location;
 
         // -------------------------------------------------------------------------|
         // Funzioni di inizializzazione dello shader
 
         void init();
-        void init_quad_mesh_buffers(int vertex_array_length, const float* vertex_array_data);
+        void init_debugbox_vertex_attributes(int vertex_array_length, const float* vertex_array_data);
 
         // -------------------------------------------------------------------------|
         // Funzioni per impostare i valori degli uniform dello shader
 
-        void set_uniform_texture_id(GLuint texture_object_id);
         void set_uniform_mvp(GLfloat mvp[16]);
         void set_uniform_outline(bool outline);
         void set_uniform_screen_width_ratio(float);

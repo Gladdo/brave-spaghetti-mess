@@ -12,23 +12,22 @@
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                          Quad Texture Shader
+//                                          DebugBoxShader
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // -------------------------------------------------------------------------|
-// Quad Texture Shader data
+// DebugBox Shader data
 
-// Containers for ids containing quad mesh data in the GPU
-rendering::quad_texture_shader::gpu_mesh_data_buffers rendering::quad_texture_shader::quad_mesh_data_buffers;
+// Buffer containing vertex attributes
+rendering::debugbox_shader::gpu_vertex_buffer rendering::debugbox_shader::vertex_attributes_buffer;
 
 // Elements Ids 
-GLuint rendering::quad_texture_shader::program_id;                          // Id dello shader program presente sulla GPU
+GLuint rendering::debugbox_shader::program_id;                          // Id dello shader program presente sulla GPU
 
 // Uniforms
-GLint rendering::quad_texture_shader::tex_unit_location;                    // Id della variabile uniform texUnit nel fragmentshader
-GLint rendering::quad_texture_shader::mvp_location;                         // Id della variabile uniform MVP nel vertexshader
-GLint rendering::quad_texture_shader::outline_location;                     // Id della variabile uniform outline nel vertexshader
-GLint rendering::quad_texture_shader::screen_width_ratio_location;          // Id della variabile uniform outline nel vertexshader
+GLint rendering::debugbox_shader::mvp_location;                         // Id della variabile uniform MVP nel vertexshader
+GLint rendering::debugbox_shader::outline_location;                     // Id della variabile uniform outline nel vertexshader
+GLint rendering::debugbox_shader::screen_width_ratio_location;          // Id della variabile uniform outline nel vertexshader
 
 // =========================================================================|
 //                                  init
@@ -41,19 +40,18 @@ GLint rendering::quad_texture_shader::screen_width_ratio_location;          // I
 //      - l'id del vbo da cui leggere i dati
 //      - Come interpretare i dati nel vbo e come si legano all'input dello shader
 //
-void rendering::quad_texture_shader::init(){
+void rendering::debugbox_shader::init(){
 
     // -------------------------------------------------------------------------|
     // Setup variable ids 
 
-    std::string vertex_shader_source = load_multiline_txt_to_string("resources/tex_vertex_shader_source.txt");
-    std::string fragment_shader_source = load_multiline_txt_to_string("resources/tex_fragment_shader_source.txt");
+    std::string vertex_shader_source = load_multiline_txt_to_string("resources/shaders/debug-shaders/debugbox-vertex-shader.txt");
+    std::string fragment_shader_source = load_multiline_txt_to_string("resources/shaders/debug-shaders/debugbox-fragment-shader.txt");
 
     // Compila e linka gli shader specificati nelle stringhe vertex_shader_source e fragment_shader_source creando il programma shader
     program_id = opengl_create_shader_program( vertex_shader_source.c_str(), fragment_shader_source.c_str() );
  
     // Carica l'id delle variabili uniform del programma (per poterle successivamente accedere):
-    tex_unit_location = glGetUniformLocation(program_id, "texUnit");
     mvp_location = glGetUniformLocation(program_id, "MVP");
     outline_location = glGetUniformLocation(program_id, "outline");
     screen_width_ratio_location = glGetUniformLocation(program_id, "screen_width_ratio");
@@ -62,25 +60,25 @@ void rendering::quad_texture_shader::init(){
     // Setup vertex data
 
     // Load vertex data from file to RAM
-    std::vector<float> quad_vertex_data = load_txt_to_float_vector("resources/quad_vertex_data.txt");
+    std::vector<float> quad_vertex_data = load_txt_to_float_vector("resources/shaders/debug-shaders/debugbox-vertex-attributes.txt");
 
     // Load vertex data on GPU and configure vertex shader pointers (VAO): 
-    init_quad_mesh_buffers( quad_vertex_data.size(), quad_vertex_data.data() );
+    init_debugbox_vertex_attributes( quad_vertex_data.size(), quad_vertex_data.data() );
 }
 
 // =========================================================================|
 //                          init_quad_mesh_buffers
 // =========================================================================|
 
-void rendering::quad_texture_shader::init_quad_mesh_buffers(int vertex_array_length, const float* vertex_array_data){
+void rendering::debugbox_shader::init_debugbox_vertex_attributes(int vertex_array_length, const float* vertex_array_data){
 
     // Crea riferimenti ai side effects di questa funzione
-    GLuint& vbo_id = quad_mesh_data_buffers.mesh_vertexes_data_buffer_id;
-    GLuint& vao_id = quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id;
-    int& vertex_number = quad_mesh_data_buffers.mesh_vertex_number;
+    GLuint& vbo_id = vertex_attributes_buffer.gpu_data_buffer_id;
+    GLuint& vao_id = vertex_attributes_buffer.gpu_pointers_buffer_id;
+    int& vertex_number = vertex_attributes_buffer.vertex_number;
 
     // Numero di valori per ciascun vertice; dipende da quanti valori prende in input il vertex shader
-    const int vertex_size = 4;
+    const int vertex_size = 2;
 
     // Se il numero di valori nell'array float non è un multiplo del size dei vertici, assert il missmatch
     if (vertex_array_length%vertex_size != 0){
@@ -139,27 +137,10 @@ void rendering::quad_texture_shader::init_quad_mesh_buffers(int vertex_array_len
 }
 
 // =========================================================================|
-//                          set_uniform_texture_id
-// =========================================================================|
-
-// Description:
-// Carica il texture_object di id texture_object_id sulla texture unit GL_TEXTURE1 
-// e imposta lo shader a fare il sample da tale texture unit
-//
-void rendering::quad_texture_shader::set_uniform_texture_id(GLuint texture_object_id){
-
-    // Carica il texture_object di id texture_object_id sulla texture unit GL_TEXTURE1
-    opengl_load_texture_on_texture_unit(texture_object_id, GL_TEXTURE1);
-
-    // Dice al sampler del fragment shader di leggere dalla texture presente sulla texture unit GL_TEXTURE1
-    glUniform1i(tex_unit_location, 1);
-}
-
-// =========================================================================|
 //                          set_uniform_mvp
 // =========================================================================|
 
-void rendering::quad_texture_shader::set_uniform_mvp(GLfloat mvp[16]){
+void rendering::debugbox_shader::set_uniform_mvp(GLfloat mvp[16]){
     glUniformMatrix4fv(mvp_location, 1, GL_FALSE, mvp);
 }
 
@@ -167,7 +148,7 @@ void rendering::quad_texture_shader::set_uniform_mvp(GLfloat mvp[16]){
 //                          set_Uniform_outline
 // =========================================================================|
 
-void rendering::quad_texture_shader::set_uniform_outline(bool outline){
+void rendering::debugbox_shader::set_uniform_outline(bool outline){
     glUniform1i(outline_location, outline);
 }
 
@@ -175,7 +156,7 @@ void rendering::quad_texture_shader::set_uniform_outline(bool outline){
 //                          set_Uniform_outline
 // =========================================================================|
 
-void rendering::quad_texture_shader::set_uniform_screen_width_ratio(float ratio){
+void rendering::debugbox_shader::set_uniform_screen_width_ratio(float ratio){
     glUniform1f(screen_width_ratio_location, ratio);
 }
 

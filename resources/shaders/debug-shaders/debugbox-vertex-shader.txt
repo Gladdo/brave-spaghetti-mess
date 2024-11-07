@@ -1,0 +1,41 @@
+#version 330
+uniform mat4 MVP;
+uniform int outline;
+uniform float screen_width_ratio;
+
+in vec2 vPos;
+
+out vec2 borderCoord;
+
+void main()
+{
+
+    	float border_width = 0.01f * outline;
+
+	// center of the box in ndc
+	vec4 center = MVP * vec4( 0.0, 0.0, 0.0, 1.0);
+
+	// box vertex in ndc (with after all transformations)
+    	vec4 pos = MVP * vec4( vPos.x, vPos.y , 0.0, 1.0) ;
+
+	// box local axis directions in ndc
+	vec4 box_halfwidth_pos = MVP * vec4(vPos.x , 0.0, 0.0, 1.0 ) - center;
+	vec4 box_halfheight_pos = MVP * vec4(0.0,  vPos.y, 0.0, 1.0 ) - center;	
+
+	// box normals of the edges adiacent to the current vertex
+	vec2 normal_x = normalize( vec2(box_halfwidth_pos.x, box_halfwidth_pos.y ));
+	vec2 normal_y = normalize( vec2(box_halfheight_pos.x, box_halfheight_pos.y ));
+
+	vec2 explodedNormal = normalize( normal_x + normal_y ) * border_width;
+	explodedNormal.x = explodedNormal.x / screen_width_ratio;
+	
+    	vec4 tmp_gl_pos = vec4( pos.x + explodedNormal.x , pos.y + explodedNormal.y , outline * 0.5, 1.0 );
+	
+	box_halfwidth_pos.x = box_halfwidth_pos.x * screen_width_ratio;
+	box_halfheight_pos.x = box_halfheight_pos.x * screen_width_ratio;
+	borderCoord = vec2( (length(box_halfwidth_pos ) + border_width ) / length(box_halfwidth_pos) * sign(vPos.x)  ,
+			    (length(box_halfheight_pos) + border_width ) / length(box_halfheight_pos) * sign(vPos.y) );
+
+	gl_Position = tmp_gl_pos;
+
+}

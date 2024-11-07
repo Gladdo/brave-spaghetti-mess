@@ -38,7 +38,7 @@ int main(void){
     // ====================================================================================
     // Initialize Rendering 
     {
-        rendering::quad_texture_shader::init();
+        rendering::debugbox_shader::init();
         rendering::sphere_shader::init();
         rendering::scene_image_framebuffer::init();
         rendering::debug_line_shader::init();
@@ -695,13 +695,12 @@ int main(void){
             // ====================================================================================
             // Setup the shader
 
-            glUseProgram(rendering::quad_texture_shader::program_id);
-            glBindVertexArray(rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
+            glUseProgram(rendering::debugbox_shader::program_id);
+            glBindVertexArray(rendering::debugbox_shader::vertex_attributes_buffer.gpu_pointers_buffer_id);
             
 
-            // Setup the shader to render using the wall texture
-            rendering::quad_texture_shader::set_uniform_texture_id(wall_texture_id);
-            rendering::quad_texture_shader::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
+            // Setup the shader uniforms
+            rendering::debugbox_shader::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
 
             // ====================================================================================
             // Iterate over all boxes data and render them
@@ -721,11 +720,11 @@ int main(void){
                 );
 
                 // Setup shader uniforms
-                rendering::quad_texture_shader::set_uniform_outline(box_go.render_outline);
-                rendering::quad_texture_shader::set_uniform_mvp(mvp);
+                rendering::debugbox_shader::set_uniform_outline(box_go.render_outline);
+                rendering::debugbox_shader::set_uniform_mvp(mvp);
 
                 // Render on the currently bounded framebuffer
-                glDrawArrays(GL_TRIANGLES, 0, rendering::quad_texture_shader::quad_mesh_data_buffers.mesh_vertex_number);
+                glDrawArrays(GL_TRIANGLES, 0, rendering::debugbox_shader::vertex_attributes_buffer.vertex_number);
             }
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
