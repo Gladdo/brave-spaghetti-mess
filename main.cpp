@@ -39,7 +39,7 @@ int main(void){
     // Initialize Rendering 
     {
         rendering::debugbox_shader::init();
-        rendering::sphere_shader::init();
+        rendering::debugsphere_shader::init();
         rendering::scene_image_framebuffer::init();
         rendering::debug_line_shader::init();
         rendering::debug_circle_shader::init();
@@ -741,13 +741,12 @@ int main(void){
             // ====================================================================================
             // Setup the shader
 
-            glUseProgram(rendering::sphere_shader::program_id);
-            glBindVertexArray(rendering::sphere_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
+            glUseProgram(rendering::debugsphere_shader::program_id);
+            glBindVertexArray(rendering::debugsphere_shader::vertex_attributes_buffer.gpu_pointers_buffer_id);
             
 
-            // Setup the shader to render using the wall texture
-            rendering::sphere_shader::set_uniform_texture_id(wall_texture_id);
-            rendering::sphere_shader::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
+            // Setup the uniforms
+            rendering::debugsphere_shader::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
 
             // ====================================================================================
             // Iterate over all spheres data and render them
@@ -767,11 +766,11 @@ int main(void){
                 );
 
                 // Setup shader uniforms
-                rendering::sphere_shader::set_uniform_outline(sphere_go.render_outline);
-                rendering::sphere_shader::set_uniform_mvp(mvp);
+                rendering::debugsphere_shader::set_uniform_outline(sphere_go.render_outline);
+                rendering::debugsphere_shader::set_uniform_mvp(mvp);
 
                 // Render on the currently bounded framebuffer
-                glDrawArrays(GL_TRIANGLES, 0, rendering::sphere_shader::quad_mesh_data_buffers.mesh_vertex_number);
+                glDrawArrays(GL_TRIANGLES, 0, rendering::debugsphere_shader::vertex_attributes_buffer.vertex_number);
             }
 
             glDisable(GL_DEPTH_TEST); 
