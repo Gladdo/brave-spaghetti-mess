@@ -208,57 +208,24 @@ namespace rendering{
     //=================================================================================================================
     //                                              DebugLine Shader
     //=================================================================================================================
-    // The shader draw call should work with stripes: we build shapes with lines (even 3d debug objects are drawn with 
-    // lines and not triangles.).
-    // Triangles are useful for rasterizer to determine pixels, but we only need to rasterize for lines to show hulls!
-    // Otherwise we can't see through.
+    // DESCRIPTION:
+    // This shader allows to render a line.
+    // The vertex shader is called over 2 vertices with 1 attribute value each corresponding to 0 and 1.
+    // When the input attribute is 0, we render the point inside the uniform variable A, by translating it with a MVP.
+    // WHen the input attribute is 1, we render the point inside the uniform variable B, also by translating it with the same MVP. 
     //
-    // -------------------------------------------------------------------------|
-    //  #version 330
-    //  uniform vec3 point_A;
-    //  uniform vec3 point_B;
-    //  uniform mat4 MVP;
-    //  
-    //  in int point_switch;
-    //  
-    //  out vec2 fragPos;
-    //  
-    //  void main()
-    //  {
-    //      if(point_switch==0){
-    //          gl_Position = MVP * vec4(point_A.x, point_A.y, 0.0, 1.0);
-    //      }else{
-    //          gl_Position = MVP * vec4(point_B.x, point_B.y, 0.0, 1.0);
-    //      }
-    //  }
-    //
-    // -------------------------------------------------------------------------|
-    //  FRAGMENT SHADER:
-    //  #version 330
-    //  #version 330
-    //  out vec4 FragColor;
-    //  
-    //  in vec2 fragPos;
-    //  
-    //  void main()
-    //  {
-    //      FragColor = vec4(0.0, 1.0, 0.0, 1.0);
-    //  
-    //  }
-    //
-
-    namespace debug_line_shader{
+    namespace debugline_shader{
 
         // -------------------------------------------------------------------------|
-        // Dati/Buffer su cui esegue lo shader
+        // Dati/Buffer su cui è eseguito lo shader
 
-        struct gpu_line_data_buffers{
-            GLuint line_data_buffer_id;                     // Id del buffer sulla GPU contenente due valori 1 e 0 per direzionare il controllo nel vertex shader
-            GLuint line_data_pointers_buffer_id;            // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
+        struct gpu_vertex_buffer{
+            GLuint gpu_data_buffer_id;                      // Id del buffer sulla GPU contenente due valori 1 e 0 per direzionare il controllo nel vertex shader
+            GLuint gpu_pointers_buffer_id;                  // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
             const int vertex_number = 2;                    // Numero di vertici nella mesh
         };
 
-        extern gpu_line_data_buffers gpu_line_data;
+        extern gpu_vertex_buffer vertex_attributes_buffer;
 
         // -------------------------------------------------------------------------|
         // Shader Elements Ids 
@@ -285,20 +252,21 @@ namespace rendering{
         // Funzioni utility basate sullo shader
 
         void draw_2d_point( float world_x_pos, float world_y_pos );
+        void draw_2d_line_stripe( float stripe_pos_x, float stripe_pos_y, float stripe_rot, std::vector<float> sequence_of_points);
 
-        // Disegna una sequenza di linee; stripe_pos specifica la posizione in world space
-        // mentre stripe_rot la sua direzione. 
-        // L'array stripe specifica la sequenza di vertici che compongono la stripe
-        void draw_2d_line_stripe( float stripe_pos_x, float stripe_pos_y, float stripe_rot, std::vector<float> stripe);
-
+        // Contains a stripe prefab which represent an arrow; the following methods allow to configure this prefab.
+        // It can be passed to the draw_2d_line_stripe to render a stripe representing an arrow.
         extern std::vector<float> arrow_stripe;
-
         void set_arrow_stripe_length( float length );
         void set_arrow_stripe_width( float width );
         void set_arrow_stripe_tip_size( float length, float width);
 
     };
 
+    //=================================================================================================================
+    //                                              DebugImpulsewave Shader
+    //=================================================================================================================
+    //
     namespace debug_circle_shader{
 
         // -------------------------------------------------------------------------|

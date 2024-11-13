@@ -41,7 +41,7 @@ int main(void){
         rendering::debugbox_shader::init();
         rendering::debugsphere_shader::init();
         rendering::scene_image_framebuffer::init();
-        rendering::debug_line_shader::init();
+        rendering::debugline_shader::init();
         rendering::debug_circle_shader::init();
     }
     // ====================================================================================
@@ -637,8 +637,11 @@ int main(void){
         //                                     SETUP GAMESCENE-FRAMEBUFFER 
 
         //=================================================================================================================
+
+        // DESCRIPTIONS:
+        // After this setup, calls to the "Draw" functions renders on the selected framebuffer instead of the default one 
         
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        { 
             // ====================================================================================
             //                              Setup rendering frame
             // ====================================================================================
@@ -684,14 +687,14 @@ int main(void){
         
         //=================================================================================================================
 
-        //                             GAMESCENE-FRAMEBUFFER RENDERING: Box Gameobjects
+        //                              RENDERING: Render Box Gameobjects
 
         //=================================================================================================================
         
         // DESCRIPTION:
-        // Renders data inside game_data::world_gameobjects_box
+        // Renders data inside game_data::world_gameobjects_box using debugbox shader
         
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        { 
             // ====================================================================================
             // Setup the shader
 
@@ -730,14 +733,14 @@ int main(void){
         
         //=================================================================================================================
 
-        //                             GAMESCENE-FRAMEBUFFER RENDERING: Sphere Gameobjects
+        //                                  RENDERING: Render Sphere Gameobjects
 
         //=================================================================================================================
         
         // DESCRIPTION:
-        // Renders data inside game_data::world_gameobjects_box
-        
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Renders data inside game_data::world_gameobjects_box using debugsphere shader
+    
+        { 
             // ====================================================================================
             // Setup the shader
 
@@ -778,41 +781,40 @@ int main(void){
 
         //=================================================================================================================
 
-        //                             GAMESCENE-FRAMEBUFFER RENDERING: Halfspaces Gameobjects
+        //                                   RENDERING: Render Halfspaces Gameobjects
 
         //=================================================================================================================
         
         // DESCRIPTION:
-        // Renders data inside game_data::world_gameobjects_box
+        // Renders data inside game_data::world_gameobjects_box using debugline shader
         
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            
+        { 
             // Renders visually the data inside the physic::dim2::contacts vector 
                            
-            glUseProgram(rendering::debug_line_shader::program_id);
-            glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+            glUseProgram(rendering::debugline_shader::program_id);
+            glBindVertexArray(rendering::debugline_shader::vertex_attributes_buffer.gpu_pointers_buffer_id);
 
             for (auto& halfspace_go : game_data::halfSpaceGameobjects){
 
-                float normal_ort_x = halfspace_go.coll.normal_y;
-                float normal_ort_y = - halfspace_go.coll.normal_x;
-                float plane_offset_x = halfspace_go.coll.normal_x * halfspace_go.coll.origin_offset;
-                float plane_offset_y = halfspace_go.coll.normal_y * halfspace_go.coll.origin_offset;
+                float halfspace_direction_x = halfspace_go.coll.normal_y;
+                float halfspace_direction_y = - halfspace_go.coll.normal_x;
+                float halfspace_pos_x = halfspace_go.coll.normal_x * halfspace_go.coll.origin_offset;
+                float halfspace_pos_y = halfspace_go.coll.normal_y * halfspace_go.coll.origin_offset;
 
-                rendering::debug_line_shader::draw_2d_point(plane_offset_x,plane_offset_y);
+                rendering::debugline_shader::draw_2d_point( halfspace_pos_x, halfspace_pos_y );
 
-                // Render the normal (applied on QB)
-                rendering::debug_line_shader::draw_2d_line_stripe( 
-                    plane_offset_x,
-                    plane_offset_y,
+                // Render the plane
+                rendering::debugline_shader::draw_2d_line_stripe( 
+                    halfspace_pos_x,
+                    halfspace_pos_y,
                     0,
-                    {normal_ort_x * 100, normal_ort_y * 100, normal_ort_x * -100, normal_ort_y * -100}
+                    {halfspace_direction_x * 100, halfspace_direction_y * 100, halfspace_direction_x * -100, halfspace_direction_y * -100}
                 );
 
                 // Render the normal (applied on QB)
-                rendering::debug_line_shader::draw_2d_line_stripe( 
-                    plane_offset_x,
-                    plane_offset_y,
+                rendering::debugline_shader::draw_2d_line_stripe( 
+                    halfspace_pos_x,
+                    halfspace_pos_y,
                     0,
                     {0, 0, halfspace_go.coll.normal_x, halfspace_go.coll.normal_y}
                 );
@@ -824,20 +826,20 @@ int main(void){
         
         //=================================================================================================================
         
-        //                            GAMESCENE-FRAMEBUFFER RENDERING: Contact data informations
+        //                        RENDERING: Render Contact data informations (Contact ponts and normals)
 
         //=================================================================================================================
         
         // DESCRIPTION:
-        // Renders data inside physic::dim2::contacts vector
+        // Renders data inside physic::dim2::contacts vector using debugline_shader
         
         if( game_data::debug_draw_contact_data )
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        { 
             
             // Renders visually the data inside the physic::dim2::contacts vector 
                            
-            glUseProgram(rendering::debug_line_shader::program_id);
-            glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+            glUseProgram(rendering::debugline_shader::program_id);
+            glBindVertexArray(rendering::debugline_shader::vertex_attributes_buffer.gpu_pointers_buffer_id);
 
             for (auto contact : physic::dim2::contacts){
 
@@ -855,14 +857,14 @@ int main(void){
                 mat4x4_mul_vec4(world_qb, model_matrix, local_qb);
 
                 // Render QA
-                rendering::debug_line_shader::draw_2d_point(world_qa[0],world_qa[1]);
+                rendering::debugline_shader::draw_2d_point(world_qa[0],world_qa[1]);
 
                 // Render QB
-                rendering::debug_line_shader::draw_2d_point(world_qb[0],world_qb[1]);
+                rendering::debugline_shader::draw_2d_point(world_qb[0],world_qb[1]);
                 
 
                 // Render the normal (applied on QB)
-                rendering::debug_line_shader::draw_2d_line_stripe( 
+                rendering::debugline_shader::draw_2d_line_stripe( 
                     world_qb[0],
                     world_qb[1],
                     0,
@@ -876,12 +878,12 @@ int main(void){
         
         //=================================================================================================================
 
-        //                                GAMESCENE-FRAMEBUFFER RENDERING: Impulse circles
+        //                                RENDERING: Render Impulse circles
 
         //=================================================================================================================
         
         if ( game_data::debug_draw_impulses )
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        { 
                 
             for( int i = 0; i < physic::dim2::contacts.size(); i++ ){
     
@@ -953,7 +955,10 @@ int main(void){
 
         //=================================================================================================================
         
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // DESCRIPTION: Disattiva il framebuffer precedente per non rischiare di renderizzarci altre cose sopra dalle
+        // future chiamate alle funzioni di draw
+
+        { 
             glUseProgram(0);
             rendering::scene_image_framebuffer::deactivate();
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -964,8 +969,10 @@ int main(void){
 
         //=================================================================================================================
 
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // DESCRIPTION: Setuppa il framebuffer di default, ovvero predispone il rendering nella window principale della
+        // applicazione
 
+        { 
             // ====================================================================================
             // Setup the application Framebuffer
             
@@ -993,12 +1000,11 @@ int main(void){
 
         //=================================================================================================================
 
-        //                             DEFAULT-FRAMEBUFFER RENDERING: Render the editor gui
+        //                                      RENDERING: Render the editor gui
 
         //=================================================================================================================
         
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            
+        { 
 
             // ====================================================================================
             // Render the GUI in the application Framebuffer
@@ -1014,8 +1020,7 @@ int main(void){
 
         //=================================================================================================================
 
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+        { 
             // ====================================================================================
             // Flush application window rendering changes
 
@@ -1252,11 +1257,11 @@ void print_GameStateLog(){
     // Setup rendering to render starting impulses
 
     if(!game_data::is_simulation_running){
-        glUseProgram(rendering::debug_line_shader::program_id);
-        glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+        glUseProgram(rendering::debugline_shader::program_id);
+        glBindVertexArray(rendering::debugline_shader::gpu_line_data.line_data_pointers_buffer_id);
 
-        rendering::debug_line_shader::set_arrow_stripe_width(0.1);
-        rendering::debug_line_shader::set_arrow_stripe_tip_size(0.2, 0.2);
+        rendering::debugline_shader::set_arrow_stripe_width(0.1);
+        rendering::debugline_shader::set_arrow_stripe_tip_size(0.2, 0.2);
 
         if(game_data::starting_impulses.size() != 0){
             
@@ -1271,13 +1276,13 @@ void print_GameStateLog(){
                     // Get the impulse
                     physic::impulse imp = game_data::starting_impulses.at(i);
 
-                    rendering::debug_line_shader::set_arrow_stripe_length(imp.mag);
+                    rendering::debugline_shader::set_arrow_stripe_length(imp.mag);
                     
                     float x = imp.q_x + rb.x;
                     float y = imp.q_y + rb.y;
                     float rad_angle = std::atan2(imp.d_y, imp.d_x);
 
-                    rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
+                    rendering::debugline_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debugline_shader::arrow_stripe );
 
                 }
 
@@ -1291,16 +1296,16 @@ void print_GameStateLog(){
     // ====================================================================================
     // Setup rendering to render starting impulses
 
-    glUseProgram(rendering::debug_line_shader::program_id);
-    glBindVertexArray(rendering::debug_line_shader::gpu_line_data.line_data_pointers_buffer_id);
+    glUseProgram(rendering::debugline_shader::program_id);
+    glBindVertexArray(rendering::debugline_shader::gpu_line_data.line_data_pointers_buffer_id);
 
-    rendering::debug_line_shader::set_arrow_stripe_width(0.1);
-    rendering::debug_line_shader::set_arrow_stripe_tip_size(0.2, 0.2);
+    rendering::debugline_shader::set_arrow_stripe_width(0.1);
+    rendering::debugline_shader::set_arrow_stripe_tip_size(0.2, 0.2);
 
     for(int i = 0; i < physic::box_contacts.size(); i ++){
         physic::contact_data& contact = physic::box_contacts[i];
 
-        rendering::debug_line_shader::set_arrow_stripe_length(contact.resolved_impulse_mag);
+        rendering::debugline_shader::set_arrow_stripe_length(contact.resolved_impulse_mag);
 
         mat4x4 mm;
         vec4 local_q;
@@ -1318,7 +1323,7 @@ void print_GameStateLog(){
         float y = world_q[1];
         float rad_angle = std::atan2(contact.n_y, contact.n_x);
 
-        rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
+        rendering::debugline_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debugline_shader::arrow_stripe );
         
         local_q[0] = contact.qb_x;
         local_q[1] = contact.qb_y;
@@ -1332,7 +1337,7 @@ void print_GameStateLog(){
         y = world_q[1];
         rad_angle = std::atan2(-contact.n_y, -contact.n_x);
 
-        rendering::debug_line_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debug_line_shader::arrow_stripe );
+        rendering::debugline_shader::draw_2d_line_stripe( x, y, rad_angle, rendering::debugline_shader::arrow_stripe );
     } 
 
 
