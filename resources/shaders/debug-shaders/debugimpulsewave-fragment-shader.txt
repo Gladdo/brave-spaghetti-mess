@@ -9,6 +9,9 @@ in vec2 f_impulse_axis;
 void main()
 {
 	vec2 impulse_wave_dir = normalize( vec2(- f_impulse_axis.y, f_impulse_axis.x ) );
+	
+	// Scarta tutti quei fragment il cui vettore posizione, proiettato sulla direzione dell'impulso,
+	// ha lunghezza maggiore del raggio
 	if( abs( dot( fragCoord, impulse_wave_dir ) ) > f_radius * 0.5 ){
 		discard;
 	}

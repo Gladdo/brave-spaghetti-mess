@@ -525,17 +525,17 @@ void rendering::debugline_shader::set_arrow_stripe_tip_size(float length, float 
 // Quad Texture Shader data
 
 // Containers for ids containing quad mesh data in the GPU
-rendering::debug_circle_shader::gpu_mesh_data_buffers rendering::debug_circle_shader::quad_mesh_data_buffers;
+rendering::debugimpulsewave_shader::gpu_vertex_buffers rendering::debugimpulsewave_shader::vertex_attributes_buffer;
 
 // Elements Ids 
-GLuint rendering::debug_circle_shader::program_id;                          // Id dello shader program presente sulla GPU
+GLuint rendering::debugimpulsewave_shader::program_id;                          // Id dello shader program presente sulla GPU
 
 // Uniforms
-GLint rendering::debug_circle_shader::mvp_location;                         // Id della variabile uniform MVP nel vertexshader
-GLint rendering::debug_circle_shader::radius_location;
-GLint rendering::debug_circle_shader::circle_width_location;
-GLint rendering::debug_circle_shader::impulse_axis_location;
-GLint rendering::debug_circle_shader::time_location;                       
+GLint rendering::debugimpulsewave_shader::mvp_location;                         // Id della variabile uniform MVP nel vertexshader
+GLint rendering::debugimpulsewave_shader::radius_location;
+GLint rendering::debugimpulsewave_shader::circle_width_location;
+GLint rendering::debugimpulsewave_shader::impulse_axis_location;
+GLint rendering::debugimpulsewave_shader::time_location;                       
 
 
 // =========================================================================|
@@ -549,13 +549,13 @@ GLint rendering::debug_circle_shader::time_location;
 //      - l'id del vbo da cui leggere i dati
 //      - Come interpretare i dati nel vbo e come si legano all'input dello shader
 //
-void rendering::debug_circle_shader::init(){
+void rendering::debugimpulsewave_shader::init(){
 
     // -------------------------------------------------------------------------|
     // Setup variable ids 
 
-    std::string vertex_shader_source = load_multiline_txt_to_string("resources/debug_circle_vertex_shader_source.txt");
-    std::string fragment_shader_source = load_multiline_txt_to_string("resources/debug_circle_fragment_shader_source.txt");
+    std::string vertex_shader_source = load_multiline_txt_to_string("resources/shaders/debug-shaders/debugimpulsewave-vertex-shader.txt");
+    std::string fragment_shader_source = load_multiline_txt_to_string("resources/shaders/debug-shaders/debugimpulsewave-fragment-shader.txt");
 
     // Compila e linka gli shader specificati nelle stringhe vertex_shader_source e fragment_shader_source creando il programma shader
     program_id = opengl_create_shader_program( vertex_shader_source.c_str(), fragment_shader_source.c_str() );
@@ -571,7 +571,7 @@ void rendering::debug_circle_shader::init(){
     // Setup vertex data
 
     // Load vertex data from file to RAM
-    std::vector<float> quad_vertex_data = load_txt_to_float_vector("resources/circle_quad_vertex_data.txt");
+    std::vector<float> quad_vertex_data = load_txt_to_float_vector("resources/shaders/debug-shaders/debugimpulsewave-vertex-attributes.txt");
 
     // Load vertex data on GPU and configure vertex shader pointers (VAO): 
     init_quad_mesh_buffers( quad_vertex_data.size(), quad_vertex_data.data() );
@@ -581,12 +581,12 @@ void rendering::debug_circle_shader::init(){
 //                          init_quad_mesh_buffers
 // =========================================================================|
 
-void rendering::debug_circle_shader::init_quad_mesh_buffers(int vertex_array_length, const float* vertex_array_data){
+void rendering::debugimpulsewave_shader::init_quad_mesh_buffers(int vertex_array_length, const float* vertex_array_data){
 
     // Crea riferimenti ai side effects di questa funzione
-    GLuint& vbo_id = quad_mesh_data_buffers.mesh_vertexes_data_buffer_id;
-    GLuint& vao_id = quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id;
-    int& vertex_number = quad_mesh_data_buffers.mesh_vertex_number;
+    GLuint& vbo_id = vertex_attributes_buffer.gpu_data_buffer_id;
+    GLuint& vao_id = vertex_attributes_buffer.gpu_pointers_buffer_id;
+    int& vertex_number = vertex_attributes_buffer.vertex_number;
 
     // Numero di valori per ciascun vertice; dipende da quanti valori prende in input il vertex shader
     const int vertex_size = 2;
@@ -643,7 +643,7 @@ void rendering::debug_circle_shader::init_quad_mesh_buffers(int vertex_array_len
 //                          set_uniform_mvp
 // =========================================================================|
 
-void rendering::debug_circle_shader::set_uniform_mvp(GLfloat mvp[16]){
+void rendering::debugimpulsewave_shader::set_uniform_mvp(GLfloat mvp[16]){
     glUniformMatrix4fv(mvp_location, 1, GL_FALSE, mvp);
 }
 
@@ -651,7 +651,7 @@ void rendering::debug_circle_shader::set_uniform_mvp(GLfloat mvp[16]){
 //                          set_uniform_radius
 // =========================================================================|
 
-void rendering::debug_circle_shader::set_uniform_radius(GLfloat radius){
+void rendering::debugimpulsewave_shader::set_uniform_radius(GLfloat radius){
     glUniform1f(radius_location, radius);
 }
 
@@ -659,7 +659,7 @@ void rendering::debug_circle_shader::set_uniform_radius(GLfloat radius){
 //                          set_uniform_radius
 // =========================================================================|
 
-void rendering::debug_circle_shader::set_uniform_circle_width(GLfloat circle_width){
+void rendering::debugimpulsewave_shader::set_uniform_circle_width(GLfloat circle_width){
     glUniform1f(circle_width_location, circle_width);
 }
 
@@ -667,7 +667,7 @@ void rendering::debug_circle_shader::set_uniform_circle_width(GLfloat circle_wid
 //                          set_uniform_impulse_axis
 // =========================================================================|
 
-void rendering::debug_circle_shader::set_uniform_impulse_axis(float x, float y){
+void rendering::debugimpulsewave_shader::set_uniform_impulse_axis(float x, float y){
     glUniform2f(impulse_axis_location, x, y);
 }
 
@@ -675,7 +675,7 @@ void rendering::debug_circle_shader::set_uniform_impulse_axis(float x, float y){
 //                           set_uniform_time
 // =========================================================================|
 
-void rendering::debug_circle_shader::set_uniform_time(GLfloat time){
+void rendering::debugimpulsewave_shader::set_uniform_time(GLfloat time){
     glUniform1f(time_location, time);
 }
 

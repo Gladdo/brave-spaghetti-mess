@@ -16,6 +16,8 @@ void main()
 {
 	gl_Position = MVP * vec4(vPos * radius, 0.0, 1.0);
 
+	// Sfrutto l'interpolazione lineare del rasterizer per mappare ciascun fragment
+	// nello spazio del model space contenente il cerchio da rappresentare.
 	fragCoord = vec2( sign(vPos.x) * radius, sign(vPos.y)* radius ); 
 
 	f_radius = radius;

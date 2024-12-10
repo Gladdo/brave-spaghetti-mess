@@ -42,7 +42,7 @@ int main(void){
         rendering::debugsphere_shader::init();
         rendering::scene_image_framebuffer::init();
         rendering::debugline_shader::init();
-        rendering::debug_circle_shader::init();
+        rendering::debugimpulsewave_shader::init();
     }
     // ====================================================================================
     // Initialize GUI
@@ -286,7 +286,9 @@ int main(void){
         //                                 CHECK IF MOUSE INPUT CLICKED ON SOME GAME OBJECT
         
         //=================================================================================================================
-        
+        #pragma region
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         // DESCRIPTION: 
         // If the user left click anywhere on the app client, check if the click happens to be on the scene tab.
         // If it is, translate the click coordinates from screen space to game world coordinate; then iterate over 
@@ -296,7 +298,7 @@ int main(void){
         
         // Se è stato premuto il tasto sinistro del mouse e il click è sul tab della scena        
         if (inputs::mouse_left_button == inputs::PRESS && inputs::check_if_click_is_on_scene())
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        { 
 
             // Itera su tutti i box game objects
             int index = 0;
@@ -374,8 +376,10 @@ int main(void){
             }
             
 
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        } 
 
+        #pragma endregion
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //=================================================================================================================
 
         //                                             UPDATE DELTA TIME
@@ -907,8 +911,8 @@ int main(void){
 
             }
             
-            glUseProgram(rendering::debug_circle_shader::program_id);
-            glBindVertexArray(rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_attribute_pointers_buffer_id);
+            glUseProgram(rendering::debugimpulsewave_shader::program_id);
+            glBindVertexArray(rendering::debugimpulsewave_shader::vertex_attributes_buffer.gpu_pointers_buffer_id);
 
             for( int i = 0 ; i < game_data::contact_circle_animations.size(); i ++ ){
 
@@ -931,19 +935,19 @@ int main(void){
                     0
                 );
 
-                rendering::debug_circle_shader::set_uniform_mvp(mvp);
-                rendering::debug_circle_shader::set_uniform_radius(c_anim.size);
-                rendering::debug_circle_shader::set_uniform_impulse_axis(c_anim.impulse_axis_x, c_anim.impulse_axis_y);
-                rendering::debug_circle_shader::set_uniform_circle_width(0.1f);
+                rendering::debugimpulsewave_shader::set_uniform_mvp(mvp);
+                rendering::debugimpulsewave_shader::set_uniform_radius(c_anim.size);
+                rendering::debugimpulsewave_shader::set_uniform_impulse_axis(c_anim.impulse_axis_x, c_anim.impulse_axis_y);
+                rendering::debugimpulsewave_shader::set_uniform_circle_width(0.1f);
 
                 c_anim.size = c_anim.size + delta_time.count() * c_anim.size_setp * 10 ; 
 
-                glDrawArrays(GL_TRIANGLES, 0, rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_number);
+                glDrawArrays(GL_TRIANGLES, 0, rendering::debugimpulsewave_shader::vertex_attributes_buffer.vertex_number);
 
                 // Draw second wave
-                rendering::debug_circle_shader::set_uniform_radius(c_anim.size-0.8);
+                rendering::debugimpulsewave_shader::set_uniform_radius(c_anim.size-0.8);
 
-                glDrawArrays(GL_TRIANGLES, 0, rendering::debug_circle_shader::quad_mesh_data_buffers.mesh_vertex_number);
+                glDrawArrays(GL_TRIANGLES, 0, rendering::debugimpulsewave_shader::vertex_attributes_buffer.vertex_number);
 
             }
             

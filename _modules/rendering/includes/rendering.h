@@ -22,19 +22,33 @@ namespace rendering{
     // comandi di draw, Opengl renderizza con lo shader correntemente bidnato.
     // Per renderizzare, uno shader ha bisogno di vertici in input con i quali 
     // popolare i suoi attributi. 
+    //
     // Un VAO (Vertex Array Object) lega dei dati sulla memoria GPU all'input
     // dello shader, specificando:
+    //
     //      - L'id di un (Vertex) Buffer Object (VBO), che contiene i dati con
     //        cui popolare gli attributi. 
-    //      - La configurazione di puntatori (Vertex attribute pointers)
-    //        ciascuno dei quali è associato ad un attributo dello shader e
-    //        specifica come leggere i dati nel VBO (per quello specifico
-    //        attributo)
+    //        Il VBO è un buffer di nella memoria GPU e deve essere configurato 
+    //        prima del suo utilizzo, caricandoci sopra dati dalla RAM.  
+    //
+    //      - La configurazione di puntatori (Vertex attribute pointers): per
+    //        ogni attributo di input allo shader, il VAO contiene un puntatore
+    //        che specifica come leggere i dati per quell'attributo dal VBO
+    //        (Specificando offset, stride e via dicendo)
     //
     // -------------------------------------------------------------------------|
     //                       SHADER UNIFORM VARIABLES
     // -------------------------------------------------------------------------|
     //
+    // Un comando di draw avvia l'esecuzione di un vertex shader; questo è
+    // eseguito pià volte, una per ciascun vertice presente sul VBO configurato
+    // in input.
+    //
+    // Il raster del rendering, attraverso i dati in output di questa prima fase,
+    // produce dei fragments; succesivamente è esegutio il fragment shader per
+    // ciascuno di questi fragments.
+    //
+    // 
     // Ad un comando di draw lo shader viene eseguito più volte, una per ciascun 
     // differente vertice di uno stesso modello; gli uniforms sono variabili 
     // dello shader che rimangono costanti per tutte le esecuzioni dei vertici di 
@@ -133,8 +147,8 @@ namespace rendering{
         // Dati dei vertici
 
         struct gpu_vertex_buffer{
-            GLuint gpu_data_buffer_id;                      // Id del buffer sulla GPU contenente i dati sui vertici
-            GLuint gpu_pointers_buffer_id;                  // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
+            GLuint gpu_data_buffer_id;                      // (VBO) Id del buffer sulla GPU contenente i dati sui vertici
+            GLuint gpu_pointers_buffer_id;                  // (VAO) Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
             int vertex_number;                              // Numero dei vertici presenti nel buffer
         };
 
@@ -144,7 +158,6 @@ namespace rendering{
         // Id delle variabili dello shader
 
         extern GLuint program_id;                          // Id dello shader program presente sulla GPU
-
         extern GLint mvp_location;                         // Id della variabile uniform MVP nel vertexshader
         extern GLint outline_location;                     // Id della variabile uniform outline nel vertexshader
         extern GLint screen_width_ratio_location;
@@ -174,8 +187,8 @@ namespace rendering{
         // Dati per gestire la mesh quadrata con cui lo shader renderizza
 
         struct gpu_vertex_buffer{
-            GLuint gpu_data_buffer_id;                      // Id del buffer sulla GPU contenente i dati sui vertici
-            GLuint gpu_pointers_buffer_id;                  // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
+            GLuint gpu_data_buffer_id;                      // (VBO) Id del buffer sulla GPU contenente i dati sui vertici
+            GLuint gpu_pointers_buffer_id;                  // (VAO) Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
             int vertex_number;                              // Numero dei vertici presenti nel buffer
         };
 
@@ -220,8 +233,8 @@ namespace rendering{
         // Dati/Buffer su cui è eseguito lo shader
 
         struct gpu_vertex_buffer{
-            GLuint gpu_data_buffer_id;                      // Id del buffer sulla GPU contenente due valori 1 e 0 per direzionare il controllo nel vertex shader
-            GLuint gpu_pointers_buffer_id;                  // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
+            GLuint gpu_data_buffer_id;                      // (VBO) Id del buffer sulla GPU contenente due valori 1 e 0 per direzionare il controllo nel vertex shader
+            GLuint gpu_pointers_buffer_id;                  // (VAO) Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
             const int vertex_number = 2;                    // Numero di vertici nella mesh
         };
 
@@ -267,18 +280,18 @@ namespace rendering{
     //                                              DebugImpulsewave Shader
     //=================================================================================================================
     //
-    namespace debug_circle_shader{
+    namespace debugimpulsewave_shader{
 
         // -------------------------------------------------------------------------|
         // Dati per gestire la mesh quadrata con cui lo shader renderizza
 
-        struct gpu_mesh_data_buffers{
-            GLuint mesh_vertexes_data_buffer_id;                    // Id del buffer sulla GPU contenente i vertici della mesh su cui viene poi renderizzata la texture
-            GLuint mesh_vertex_attribute_pointers_buffer_id;        // Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
-            int mesh_vertex_number;                                 // Numero di vertici nella mesh
+        struct gpu_vertex_buffers{
+            GLuint gpu_data_buffer_id;                      // (VBO) Id del buffer sulla GPU contenente due valori 1 e 0 per direzionare il controllo nel vertex shader
+            GLuint gpu_pointers_buffer_id;                  // (VAO) Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
+            int vertex_number;                    // Numero di vertici nella mesh
         };
 
-        extern gpu_mesh_data_buffers quad_mesh_data_buffers;
+        extern gpu_vertex_buffers vertex_attributes_buffer;
 
         // -------------------------------------------------------------------------|
         // Shader Elements Ids 
