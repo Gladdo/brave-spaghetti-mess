@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace rendering{
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                      NOTES ON OPENGL:
@@ -136,82 +136,55 @@ namespace rendering{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                          FILE CODE:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////                                     
+namespace rendering{
 
-    //=================================================================================================================
-    //                                         DebugBox Shader 
-    //=================================================================================================================
-    //
-    namespace debugbox_shader{
+    struct vertex_buffer{
+        
+        /* We need more than one buffer to store vertex data: one contains the raw 
+        data (floats values), one contains metadata on how to interpret the raw data. */
+        GLuint raw_data_buffer_id;                      
+        GLuint meta_data_buffer_id;
 
-        // -------------------------------------------------------------------------|
-        // Dati dei vertici
+        /* The number of values (floats) inside raw_data_buffer does not represent the 
+        number of vertices inside the vertex_buffer: a vertex can be made up of
+        one or more values (called attributes of the vertices). 
+        This value keep track of the exact number of vertices inside the buffer. */                  
+        int number_of_vertices;
+                                          
+    };
 
-        struct gpu_vertex_buffer{
-            GLuint gpu_data_buffer_id;                      // (VBO) Id del buffer sulla GPU contenente i dati sui vertici
-            GLuint gpu_pointers_buffer_id;                  // (VAO) Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
-            int vertex_number;                              // Numero dei vertici presenti nel buffer
-        };
+    namespace shader_debugbox{
 
-        extern gpu_vertex_buffer vertex_attributes_buffer;
+        extern GLuint program_id;
+        /* Lo shader prende in input sempre una stessa mesh rettangolare che poi modifica e renderizza
+        in diverse posizioni dello schermo tramite la variable uniform mvp */
+        extern vertex_buffer quad_mesh;  
 
-        // -------------------------------------------------------------------------|
-        // Id delle variabili dello shader
+        /* Lo shader ha delle variabili interne; per poterle configurare è necessario 
+        conoscerne l'id (location). */
+        extern GLint uniform_mvp_location;                     
+        extern GLint uniform_outline_location;                     
+        extern GLint uniform_screen_width_ratio_location;
 
-        extern GLuint program_id;                          // Id dello shader program presente sulla GPU
-        extern GLint mvp_location;                         // Id della variabile uniform MVP nel vertexshader
-        extern GLint outline_location;                     // Id della variabile uniform outline nel vertexshader
-        extern GLint screen_width_ratio_location;
-
-        // -------------------------------------------------------------------------|
-        // Funzioni di inizializzazione dello shader
-
-        void init();
-        void init_debugbox_vertex_attributes(int vertex_array_length, const float* vertex_array_data);
-
-        // -------------------------------------------------------------------------|
-        // Funzioni per impostare i valori degli uniform dello shader
-
+        /* init_shader deve essere chiamata una sola volta a inizio del programma; configura
+        lo shader sulla GPU per il suo utilizzo. */
+        void init_shader();
         void set_uniform_mvp(GLfloat mvp[16]);
         void set_uniform_outline(bool outline);
         void set_uniform_screen_width_ratio(float);
 
     }
 
-    //=================================================================================================================
-    //                                          DebugSphere Shader
-    //=================================================================================================================
-    //
-    namespace debugsphere_shader{
+    namespace shader_debugsphere{
 
-        // -------------------------------------------------------------------------|
-        // Dati per gestire la mesh quadrata con cui lo shader renderizza
+        extern GLuint program_id;                         
+        extern vertex_buffer quad_mesh;
 
-        struct gpu_vertex_buffer{
-            GLuint gpu_data_buffer_id;                      // (VBO) Id del buffer sulla GPU contenente i dati sui vertici
-            GLuint gpu_pointers_buffer_id;                  // (VAO) Id del buffer sulla GPU contenente i puntatori che specificano come interpretare i dati nel buffer
-            int vertex_number;                              // Numero dei vertici presenti nel buffer
-        };
-
-        extern gpu_vertex_buffer vertex_attributes_buffer;
-
-        // -------------------------------------------------------------------------|
-        // Shader Elements Ids 
-
-        extern GLuint program_id;                          // Id dello shader program presente sulla GPU
-
-        extern GLint mvp_location;                         // Id della variabile uniform MVP nel vertexshader
-        extern GLint outline_location;                     // Id della variabile uniform outline nel vertexshader
+        extern GLint mvp_location;                         
+        extern GLint outline_location;                 
         extern GLint screen_width_ratio_location;
 
-        // -------------------------------------------------------------------------|
-        // Funzioni di inizializzazione dello shader
-
-        void init();
-        void init_debugsphere_vertex_attributes(int vertex_array_length, const float* vertex_array_data);
-
-        // -------------------------------------------------------------------------|
-        // Funzioni per impostare i valori degli uniform dello shader
-
+        void init_shader();
         void set_uniform_mvp(GLfloat mvp[16]);
         void set_uniform_outline(bool outline);
         void set_uniform_screen_width_ratio(float);
@@ -353,6 +326,7 @@ namespace rendering{
     //=================================================================================================================
 
     GLuint opengl_create_shader_program(const char* vertex_shader_text_ptr, const char* fragment_shader_ptr);
+    GLuint opengl_create_shader_program(const char* vertex_shader_text_ptr, const char* fragment_shader_ptr, const char* geometry_shader_ptr);
     unsigned opengl_compile_shader(GLuint shader_id, const char* shader_source);
     GLuint opengl_create_texture_buffer(unsigned char* img_data, int img_width, int img_height );
     GLuint opengl_create_texture_buffer(unsigned char* img_data, int img_width, int img_height, int pixel_channels );

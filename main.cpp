@@ -38,8 +38,8 @@ int main(void){
     // ====================================================================================
     // Initialize Rendering 
     {
-        rendering::debugbox_shader::init();
-        rendering::debugsphere_shader::init();
+        rendering::shader_debugbox::init_shader();
+        rendering::shader_debugsphere::init_shader();
         rendering::scene_image_framebuffer::init();
         rendering::debugline_shader::init();
         rendering::debugimpulsewave_shader::init();
@@ -664,8 +664,7 @@ int main(void){
             rendering::game_scene_viewport.pixel_width = gui::parameters.scene_window.inner_img_pixel_width;
             rendering::game_scene_viewport.pixel_height = gui::parameters.scene_window.inner_img_pixel_height;
             rendering::game_scene_viewport.ratio =
-                rendering::game_scene_viewport.pixel_width /
-                ((float) rendering::game_scene_viewport.pixel_height);
+                rendering::game_scene_viewport.pixel_width / ((float) rendering::game_scene_viewport.pixel_height);
 
             // Specifica ad opengl la dimensione del canvas dove renderizzare
             // (Sostanzialmente si specifica come associare i pixel del monitor in cui si visualizza il gioco
@@ -690,35 +689,20 @@ int main(void){
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
         //=================================================================================================================
-
-        //                              RENDERING: Render Box Gameobjects
-
-        //=================================================================================================================
-        
-        // DESCRIPTION:
-        // Renders data inside game_data::world_gameobjects_box using debugbox shader
-        
+        // Render Box Gameobjects
         { 
-            // ====================================================================================
+
             // Setup the shader
+            glUseProgram(rendering::shader_debugbox::program_id);
+            glBindVertexArray(rendering::shader_debugbox::quad_mesh.meta_data_buffer_id);
+            rendering::shader_debugbox::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
 
-            glUseProgram(rendering::debugbox_shader::program_id);
-            glBindVertexArray(rendering::debugbox_shader::vertex_attributes_buffer.gpu_pointers_buffer_id);
-            
-
-            // Setup the shader uniforms
-            rendering::debugbox_shader::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
-
-            // ====================================================================================
-            // Iterate over all boxes data and render them
-
-            float mvp [16];
-
+            // Iterate over all boxes 
+            float tmp_mvp [16];
             for ( auto& box_go : game_data::boxGameobjects ) {
 
-                // Calculate MVP based on box transform
                 rendering::calculate_mvp(
-                    mvp, 
+                    tmp_mvp, 
                     box_go.world_x_scale, 
                     box_go.world_y_scale, 
                     box_go.world_x_pos, 
@@ -727,13 +711,14 @@ int main(void){
                 );
 
                 // Setup shader uniforms
-                rendering::debugbox_shader::set_uniform_outline(box_go.render_outline);
-                rendering::debugbox_shader::set_uniform_mvp(mvp);
+                rendering::shader_debugbox::set_uniform_outline(box_go.render_outline);
+                rendering::shader_debugbox::set_uniform_mvp(tmp_mvp);
 
-                // Render on the currently bounded framebuffer
-                glDrawArrays(GL_TRIANGLES, 0, rendering::debugbox_shader::vertex_attributes_buffer.vertex_number);
+                // Rendering call
+                glDrawArrays(GL_TRIANGLES, 0, rendering::shader_debugbox::quad_mesh.number_of_vertices);
             }
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        } 
         
         //=================================================================================================================
 
@@ -748,12 +733,12 @@ int main(void){
             // ====================================================================================
             // Setup the shader
 
-            glUseProgram(rendering::debugsphere_shader::program_id);
-            glBindVertexArray(rendering::debugsphere_shader::vertex_attributes_buffer.gpu_pointers_buffer_id);
+            glUseProgram(rendering::shader_debugsphere::program_id);
+            glBindVertexArray(rendering::shader_debugsphere::quad_mesh.meta_data_buffer_id);
             
 
             // Setup the uniforms
-            rendering::debugsphere_shader::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
+            rendering::shader_debugsphere::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
 
             // ====================================================================================
             // Iterate over all spheres data and render them
@@ -773,11 +758,11 @@ int main(void){
                 );
 
                 // Setup shader uniforms
-                rendering::debugsphere_shader::set_uniform_outline(sphere_go.render_outline);
-                rendering::debugsphere_shader::set_uniform_mvp(mvp);
+                rendering::shader_debugsphere::set_uniform_outline(sphere_go.render_outline);
+                rendering::shader_debugsphere::set_uniform_mvp(mvp);
 
                 // Render on the currently bounded framebuffer
-                glDrawArrays(GL_TRIANGLES, 0, rendering::debugsphere_shader::vertex_attributes_buffer.vertex_number);
+                glDrawArrays(GL_TRIANGLES, 0, rendering::shader_debugsphere::quad_mesh.number_of_vertices);
             }
 
             glDisable(GL_DEPTH_TEST); 

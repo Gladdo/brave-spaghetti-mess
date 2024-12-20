@@ -1,0 +1,77 @@
+#version 330 core
+layout (triangles) in;
+layout (triangle_strip, max_vertices = 24) out;
+
+in vertex {
+    vec2 borderCoord;
+    vec2 vertex_normal_ndc;
+    vec3 debug_color;
+} gs_in[];
+
+out vec2 BorderCoord;
+out vec3 DebugColor;
+
+void pass_through();
+void generate_line(int index);
+
+void main() {    
+    
+    pass_through();
+    
+    generate_line(0);
+    generate_line(1);
+    generate_line(2);
+
+}
+
+void pass_through() {    
+    
+    gl_Position = gl_in[0].gl_Position;     
+    BorderCoord = gs_in[0].borderCoord;
+    DebugColor = gs_in[0].debug_color;
+    EmitVertex();
+
+    gl_Position = gl_in[1].gl_Position;
+    BorderCoord = gs_in[1].borderCoord;
+    DebugColor = gs_in[1].debug_color;
+    EmitVertex();
+
+    gl_Position = gl_in[2].gl_Position;
+    BorderCoord = gs_in[2].borderCoord;
+    DebugColor = gs_in[2].debug_color;
+    EmitVertex();
+
+    EndPrimitive();
+} 
+
+void generate_line(int index){
+
+    BorderCoord = vec2(0,0);
+    DebugColor = vec3(0, 1, 0);
+
+    vec2 ortg_vector = normalize( vec2( - gs_in[index].vertex_normal_ndc.y, gs_in[index].vertex_normal_ndc.x) ) * 0.01;
+
+    gl_Position = gl_in[index].gl_Position;     
+    EmitVertex();
+
+    gl_Position = gl_in[index].gl_Position + vec4( gs_in[index].vertex_normal_ndc.x, gs_in[index].vertex_normal_ndc.y, 0, 0);
+    //gl_Position = gl_in[index].gl_Position + vec4( 0.1, 0.1, 0, 0);
+    EmitVertex();
+
+    gl_Position = gl_in[index].gl_Position + vec4( ortg_vector.x, ortg_vector.y, 0, 0);
+    EmitVertex();
+
+    EndPrimitive();
+
+    gl_Position = gl_in[index].gl_Position ;     
+    EmitVertex();
+
+    gl_Position = gl_in[index].gl_Position + vec4( gs_in[index].vertex_normal_ndc.x, gs_in[index].vertex_normal_ndc.y, 0, 0) + vec4( ortg_vector.x, ortg_vector.y, 0, 0);
+    EmitVertex();
+
+    gl_Position = gl_in[index].gl_Position + vec4( gs_in[index].vertex_normal_ndc.x, gs_in[index].vertex_normal_ndc.y, 0, 0);
+    EmitVertex();
+
+    EndPrimitive();
+
+}
