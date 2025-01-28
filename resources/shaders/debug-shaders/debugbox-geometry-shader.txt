@@ -4,8 +4,8 @@ layout (triangle_strip, max_vertices = 24) out;
 
 in vertex {
     vec2 borderCoord;
-    vec2 vertex_normal_ndc;
-    vec3 debug_color;
+    vec2 vertex_normal_ndc;             // Contiene un vettore direzione associato a un vertice; utilizzata nel geometry shader per costruire un rettangolo.
+    vec3 debug_color;                   // Contiene un vettore associato a un colore; utilizzato nel fragmentshader per rappresentare valori o condizioni vero/falso.
 } gs_in[];
 
 out vec2 BorderCoord;
@@ -18,9 +18,9 @@ void main() {
     
     pass_through();
     
-    generate_line(0);
-    generate_line(1);
-    generate_line(2);
+    //generate_line(0);
+    //generate_line(1);
+    //generate_line(2);
 
 }
 

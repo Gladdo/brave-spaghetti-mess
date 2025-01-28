@@ -1,0 +1,55 @@
+) WORLD SPACE TO NDC MAPPING DISTORTION:
+The mvp (the VIEW matrix in particular) is built by specifying the game world units that are confined 
+between the left, right, top and bottom borders of the camera (technically speaking, the frustum 
+parameters r, l, t, b).
+
+The MVP projection is such that the following mappings happens between the game world units and the ndc system:
+
+	l -> x -1
+	r -> x  1
+	b -> y -1
+	t -> y  1 
+
+) NDC DISTORTION: As you can notice, in NDC lenghts in different directions can represent different game world lengths:  
+
+	if r = 10, x = 1 spans 10 units in world space 
+	if t = 4, y = 1 spans 4 units in world space
+
+[See img-1.jpg and img-2.jpg]
+ 
+) NDC TO VIEWPORT MAPPING
+The viewport is an actual area of the monitor specified by a pixel width and a pixel height (vp_width, vp_height); 
+the ndc space is mapped into it with the following mappings:
+
+	x -1 -> 0 px
+  	x  1 -> vp_width px
+  	y -1 -> 0 px
+  	y  1 -> vp_height px
+
+Usually vp_width and vp_height have the same ratio as the frustum parameters:
+
+	vp_width / vp_height = l-r / t-b
+
+Hence the NDC to VIEWPORT mapping fixes the NDC DISTORTION introduced earlier 
+
+) MANIPULATING THE NDC SPACE
+Since geometries in NDC space are distorted, to be able to work in it "as if we were in game world" we must 
+first make each dimension proportionate (Otherwise operations like dot products (projections) doesn't work 
+properly) by either:
+
+	fixing the x axis: x = x * r/t
+	or fixing the y axis: y = y * t/r
+
+Observation: many operations, like differences and sum, still work lay correct results even in a distorted
+ndc space. Only projections (dot product) may cause problems (because orthogonality can be messed up).
+
+[See img-3.jpg]
+[See img-4.jpg: dot product in ndc senza aver proporzionato le dimensioni.]
+
+) BUILD A BORDER TO A BOX IN NDC:
+ 
+1) Find the coordinates of the box in NDC space
+2) Apply a corrective factor to a dimension to make it proportionate and be able to elaborate on "monitor coordinates"
+3) Explode the vertices of the boxes 
+Sostanzialmente associo al vertice corrente una UV MAGGIORE di 1, con la speranza che poi, a uv coord di 1 cè l'attuale 
+box, mentre tra 1 e 1+x cè il bordo (che quindi nel fragment shader è colorato di bianco)
