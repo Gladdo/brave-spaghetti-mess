@@ -18,7 +18,6 @@
 // Global main data
 
 GLFWwindow* window;
-
 auto previousTime = std::chrono::high_resolution_clock::now();
 std::chrono::duration<float> delta_time;
 
@@ -26,46 +25,29 @@ void print_GameStateLog();
 
 int main(void){
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                           INITIALIZATIONS
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // ====================================================================================
-    // Initialize Opengl window
-    {
-        window = rendering::opengl_glfw_initialization();
-    }
-    // ====================================================================================
-    // Initialize Rendering 
-    {
-        rendering::shader_debugbox::init_shader();
-        rendering::shader_debugsphere::init_shader();
-        rendering::scene_image_framebuffer::init();
-        rendering::debugline_shader::init();
-        rendering::debugimpulsewave_shader::init();
-    }
-    // ====================================================================================
-    // Initialize GUI
-    {
-        gui::init(window);
-    }
-    // ====================================================================================
+    /////////////////////////////////////////////////////////////////////////////////////
+    // INITIALIZATIONS
+    
+    window = rendering::opengl_glfw_initialization();
+   
+    rendering::shader_debugbox::init_shader();
+    rendering::shader_debugsphere::init_shader();
+    rendering::scene_image_framebuffer::init();
+    rendering::debugline_shader::init();
+    rendering::debugimpulsewave_shader::init();
+    
+    gui::init(window);
+    
     // Initialize Wall Texture
     GLuint wall_texture_id;
     {
         int img_width, img_height;
         std::vector<unsigned char> image_data;
-
-        // Load image data from jpg file to RAM 
-        image_data = load_image_to_unsigned_char_vector("resources/wall.jpg", &img_width, &img_height);
-        
-        // Create a texture object on the GPU and load image data to it
-        wall_texture_id = rendering::opengl_create_texture_buffer(image_data.data(), img_width, img_height);
-
+        image_data = load_image_to_unsigned_char_vector("resources/wall.jpg", &img_width, &img_height);         // Load image data from jpg file to RAM 
+        wall_texture_id = rendering::opengl_create_texture_buffer(image_data.data(), img_width, img_height);    // Create a texture object on the GPU and load image data to it
         image_data.clear();
     }
     
-    // ====================================================================================
     // Initialize sim play and sim pause buttons images
     {
         int img_width, img_height;
@@ -82,28 +64,21 @@ int main(void){
         image_data.clear();
     }
     
-    // ====================================================================================
     // Initialize Rendering Camera properties
-    {
-        rendering::camera.world_x_pos = 0;
-        rendering::camera.world_y_pos = 0;
-        rendering::camera.world_z_angle = 0;
-        rendering::camera.world_width_fov = 0;  // derived quantity
-        rendering::camera.world_height_fov = 20;
-        rendering::camera.world_near_clip = 0;
-        rendering::camera.world_far_clip = 20;
-    }
+    rendering::camera.world_x_pos = 0;
+    rendering::camera.world_y_pos = 0;
+    rendering::camera.world_z_angle = 0;
+    rendering::camera.world_width_fov = 0;  // derived quantity
+    rendering::camera.world_height_fov = 20;
+    rendering::camera.world_near_clip = 0;
+    rendering::camera.world_far_clip = 20;
     
-    // ====================================================================================
     // Flow controll variables
-
     bool simulation_run = true;
     bool halt_condition = false;
     bool log_printed = false;
 
-    // ====================================================================================
     // Initialize scenario
-
     game_data::AddHalfspaceObject();
     game_data::AddHalfspaceObject();
     game_data::AddHalfspaceObject();
@@ -122,190 +97,151 @@ int main(void){
     game_data::halfSpaceGameobjects[3].coll.normal_x = 1;
     game_data::halfSpaceGameobjects[3].coll.normal_y = 0;
 
-    // ====================================================================================
     // Initialize debug data
-
     physic::dim2::InitFrameCollisionLogs(8);
     game_data::InitFrameStates(8);
     
+
     while (!glfwWindowShouldClose(window))
     { 
+        /////////////////////////////////////////////////////////////////////////////////
+        //                                      LOGIC
 
-        //=================================================================================================================
-
-        //                                              MAIN LOOP START                                                    
+        //-------------------------------------------------------------------------------
+        // UPDATE INPUT STATE VARIABLES                                                      
         
-        //=================================================================================================================
+        inputs::update();
 
-        //=================================================================================================================
-        
-        //                                          UPDATE INPUT STATE VARIABLES                                                      
-        
-        //=================================================================================================================
-
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            
-            inputs::update();
-
-            if( inputs::simulation_run_toggle_button == inputs::PRESS ){
-                if(simulation_run == true){
-                    simulation_run = false;
-                    std::cout << "Simulation run false" << std::endl << std::flush;
-                }else{
-                    simulation_run = true;
-                    std::cout << "Simulation run true" << std::endl << std::flush;
-                }
-            }
-
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        //=================================================================================================================
-    
-        //                                                  DEBUG LOG                                                      
-        
-        //=================================================================================================================
-
-        // DESCRIPTION: 
-        // Controlla specifiche condizioni che eventualmente bloccano l'esecuzione della simulazione e
-        // fanno il print dello stato di gioco degli ultimi n_frames (dei dati inerenti ai box, alle sfere e delle
-        // collisioni)
-
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-            
-            if (halt_condition == false) {
-
-                // ----------------------------------------
-                // BOXES
-
-                // For every box game object, check if position or velocity are within bounds
-                for( int i = 0; i < game_data::boxGameobjects.size(); i++){
-                
-                    game_data::BoxGameObject& box_go = game_data::boxGameobjects[i]; 
-
-                    // Check velocity
-                    if( box_go.rb.vel_x > 1000 || box_go.rb.vel_x < -1000 || box_go.rb.vel_y > 1000 || box_go.rb.vel_y < -1000 ){
-                        halt_condition = true;
-                    }
-            
-                    // Check position
-                    if( box_go.world_x_pos > 1000 || box_go.world_x_pos < -1000 || box_go.world_y_pos > 1000 || box_go.world_y_pos < -1000){
-                        halt_condition = true;
-                    }
-
-                    // Check for value indetermination
-                    if ( box_go.world_x_pos != box_go.world_x_pos || box_go.world_y_pos != box_go.world_y_pos 
-                    || box_go.rb.vel_x != box_go.rb.vel_x || box_go.rb.vel_y != box_go.rb.vel_y) {
-                        halt_condition = true;
-                    }
-
-                }
-
-                // ----------------------------------------
-                // SPHERES
-
-                for (int i = 0; i < game_data::sphereGameobjects.size(); i ++){
-
-                    game_data::SphereGameObject& sphere_go = game_data::sphereGameobjects[i];
-
-                    // Check velocity
-                    if ( sphere_go.rb.vel_x > 1000 || sphere_go.rb.vel_y < -1000 || sphere_go.rb.vel_y > 1000 || sphere_go.rb.vel_y < -1000){
-                        halt_condition = true;
-                    }
-
-                    // Check position
-                    if ( sphere_go.world_x_pos > 1000 || sphere_go.world_x_pos < -1000 || sphere_go.world_y_pos > 1000 || sphere_go.world_y_pos < -1000) {
-                        halt_condition = true;
-                    }
-
-                    if ( sphere_go.world_x_pos != sphere_go.world_x_pos || sphere_go.world_y_pos != sphere_go.world_y_pos 
-                    || sphere_go.rb.vel_x != sphere_go.rb.vel_x || sphere_go.rb.vel_y != sphere_go.rb.vel_y) {
-                        halt_condition = true;
-                    }
-
-                }
-
-            }
-
-            // Se qualche condizione di halt è stata triggerata, interrompi la simulazione e, se non è già stato
-            // stampato (log_rinted == false), effettua il print dei log sullo stato di gioco negli ultimi n_frames
-            if (halt_condition) {                
-
+        if( inputs::simulation_run_toggle_button == inputs::PRESS ){
+            if(simulation_run == true){
                 simulation_run = false;
+                std::cout << "Simulation run false" << std::endl << std::flush;
+            }else{
+                simulation_run = true;
+                std::cout << "Simulation run true" << std::endl << std::flush;
+            }
+        }
+        
+        //-------------------------------------------------------------------------------
+        // DEBUG HALT CONDITIONS                                                   
+        // Controlla delle condizioni sullo stato di gioco ed eventualmente blocca 
+        // l'esecuzione della simulazione.
+        // Fa il print dello stato di gioco negli ultimi n_frames.
 
+        if (halt_condition == false) {
+
+            // For every box game object, check if position and velocity are within
+            // bounds
+            for ( int i = 0; i < game_data::boxGameobjects.size(); i++){
+                game_data::BoxGameObject& box_go = game_data::boxGameobjects[i]; 
+                if 
+                ( 
+                    box_go.rb.vel_x > 1000 || box_go.rb.vel_x < -1000 || 
+                    box_go.rb.vel_y > 1000 || box_go.rb.vel_y < -1000 
+                )  
+                    halt_condition = true;
+                if 
+                ( 
+                    box_go.world_x_pos > 1000 || box_go.world_x_pos < -1000 || 
+                    box_go.world_y_pos > 1000 || box_go.world_y_pos < -1000
+                )
+                    halt_condition = true;
+                if // Check for value indetermination: value != value
+                ( 
+                    box_go.world_x_pos != box_go.world_x_pos || 
+                    box_go.world_y_pos != box_go.world_y_pos || 
+                    box_go.rb.vel_x != box_go.rb.vel_x || 
+                    box_go.rb.vel_y != box_go.rb.vel_y
+                ) 
+                    halt_condition = true;
+                
+            }
+            
+            // For every sphere game object, check if position and velocity are within 
+            // bounds
+            for (int i = 0; i < game_data::sphereGameobjects.size(); i ++){
+                game_data::SphereGameObject& sphere_go = game_data::sphereGameobjects[i];
+                if 
+                ( 
+                    sphere_go.rb.vel_x > 1000 || sphere_go.rb.vel_y < -1000 || 
+                    sphere_go.rb.vel_y > 1000 || sphere_go.rb.vel_y < -1000
+                )
+                    halt_condition = true;
+                if 
+                ( 
+                    sphere_go.world_x_pos > 1000 || sphere_go.world_x_pos < -1000 || 
+                    sphere_go.world_y_pos > 1000 || sphere_go.world_y_pos < -1000
+                ) 
+                    halt_condition = true;
+                if // Check for value indetermination: value != value
+                ( 
+                    sphere_go.world_x_pos != sphere_go.world_x_pos || 
+                    sphere_go.world_y_pos != sphere_go.world_y_pos || 
+                    sphere_go.rb.vel_x != sphere_go.rb.vel_x || 
+                    sphere_go.rb.vel_y != sphere_go.rb.vel_y
+                ) 
+                    halt_condition = true;
+            }
+
+            if (halt_condition) {                
+                simulation_run = false;
                 if (log_printed == false) {
-
                     std::cout << "HALT CONDITION TRIGGERED - Printing game state log" << std::endl << std::flush;
-
-                    // Print the log
                     print_GameStateLog();
                     log_printed = true;
                 }
-
             }
 
-            
-    
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        } 
 
-        //=================================================================================================================
+        //-------------------------------------------------------------------------------
+        // MANAGE SCENARIO STATE STASH 
         
-        //                                         SAVE SCENARIO CONFIGURATION                                                     
-        
-        //=================================================================================================================
-
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-            if ( inputs::stash_scenario_configuration_button == inputs::PRESS ) {
-                
-                for(int i = 0; i < game_data::boxGameobjects.size(); i++){
-                    game_data::stashedBoxGameobjects[i] = game_data::boxGameobjects[i]; 
-                }
-
-                for(int i = 0; i < game_data::sphereGameobjects.size(); i++){
-                    game_data::stashedSphereGameobjects[i] = game_data::sphereGameobjects[i]; 
-                }
-
+        // Se è stato premuto il rispettivo bottone, salva lo stato dei gameobjects 
+        // nella stash                                                  
+        if ( inputs::stash_scenario_configuration_button == inputs::PRESS ) {
+            for(int i = 0; i < game_data::boxGameobjects.size(); i++){
+                game_data::stashedBoxGameobjects[i] = game_data::boxGameobjects[i]; 
             }
-
-            if ( inputs::load_stashed_scenario_configuration_button == inputs::PRESS ){
-                
-                for(int i = 0; i < game_data::boxGameobjects.size(); i++){
-                    game_data::boxGameobjects[i] = game_data::stashedBoxGameobjects[i]; 
-                }
-
-                for(int i = 0; i < game_data::sphereGameobjects.size(); i++){
-                    game_data::sphereGameobjects[i] = game_data::stashedSphereGameobjects[i]; 
-                }
+            for(int i = 0; i < game_data::sphereGameobjects.size(); i++){
+                game_data::stashedSphereGameobjects[i] = game_data::sphereGameobjects[i]; 
             }
+        }
 
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        //=================================================================================================================
-
-        //                                 CHECK IF MOUSE INPUT CLICKED ON SOME GAME OBJECT
+        // Se è stato premuto il rispettivo bottone, load lo stato dei gameobjects 
+        // dallo stash
+        if ( inputs::load_stashed_scenario_configuration_button == inputs::PRESS ){
+            for(int i = 0; i < game_data::boxGameobjects.size(); i++){
+                game_data::boxGameobjects[i] = game_data::stashedBoxGameobjects[i]; 
+            }
+            for(int i = 0; i < game_data::sphereGameobjects.size(); i++){
+                game_data::sphereGameobjects[i] = game_data::stashedSphereGameobjects[i]; 
+            }
+        }
         
-        //=================================================================================================================
-        #pragma region
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        // DESCRIPTION: 
-        // If the user left click anywhere on the app client, check if the click happens to be on the scene tab.
-        // If it is, translate the click coordinates from screen space to game world coordinate; then iterate over 
-        // all box_gameobjects to check if the mouse hits a rigidbody.
-        // If it does set the flag "event_is_dragging_active" and store in "dragged_game_object_id" the id of the game 
-        // object hit by the mouse click
-        
-        // Se è stato premuto il tasto sinistro del mouse e il click è sul tab della scena        
-        if (inputs::mouse_left_button == inputs::PRESS && inputs::check_if_click_is_on_scene())
-        { 
+        //-------------------------------------------------------------------------------
+        // MANAGE MOUSE INPUT CLICK
+        // If the user left click anywhere on the app client, check if the click happens 
+        // to be on the scene tab.
+        // If it is, translate the click coordinates from screen space to game world 
+        // coordinate; then iterate over all gameobjects to check if the mouse hits 
+        // a rigidbody.
+        // If it does set the flag "event_is_dragging_active" and store in 
+        // "dragged_game_object_id" the id of the game object hit by the mouse click.
+              
+        if (
+            inputs::mouse_left_button == inputs::PRESS && 
+            inputs::check_if_click_is_on_scene()
+        ) { 
 
             // Itera su tutti i box game objects
             int index = 0;
             for( auto& box_go : game_data::boxGameobjects) {
   
-                // Controlla se le coordinate del mouse in world space sono dentro al box corrente
-                // NB: world_x_pos e world_y_pos del mouse click sono calcolate nello step di update degli inputs
+                // Controlla se le coordinate del mouse in world space sono dentro al box
+                // corrente
+                // NB: world_x_pos e world_y_pos del mouse click sono calcolate nello 
+                // step di update degli inputs
                 if ( 
                     physic::dim2::check_pointbox_collision(
                         inputs::mouse_last_click.world_x_pos,
@@ -330,6 +266,7 @@ int main(void){
                     game_data::draggedGameObject.coll = &box_go.coll;
                     game_data::draggedGameObject.gameobject_id = &box_go.gameobject_id;
 
+                    // Dice all'ui quale gameobject è da mostrare nell'inspector
                     gui::selected_box_array_pos = index;
                     gui::selected_sphere_array_pos = -1;
                     gui::selected_halfspace_array_pos = -1;
@@ -343,8 +280,10 @@ int main(void){
             index = 0;
             for( auto& sphere_go : game_data::sphereGameobjects) {
   
-                // Controlla se le coordinate del mouse in world space sono dentro al box corrente
-                // NB: world_x_pos e world_y_pos del mouse click sono calcolate nello step di update degli inputs
+                // Controlla se le coordinate del mouse in world space sono dentro al box
+                // corrente
+                // NB: world_x_pos e world_y_pos del mouse click sono calcolate nello 
+                // step di update degli inputs
                 if ( 
                     physic::dim2::check_pointsphere_collision(
                         inputs::mouse_last_click.world_x_pos,
@@ -367,6 +306,7 @@ int main(void){
                     game_data::draggedGameObject.coll = &sphere_go.coll;
                     game_data::draggedGameObject.gameobject_id = &sphere_go.gameobject_id;
 
+                    // Dice all'ui quale gameobject è da mostrare nell'inspector
                     gui::selected_box_array_pos = -1;
                     gui::selected_sphere_array_pos = index;
                     gui::selected_halfspace_array_pos = -1;
@@ -375,33 +315,23 @@ int main(void){
                 index ++;
             }
             
-
         } 
 
-        #pragma endregion
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //=================================================================================================================
+        /////////////////////////////////////////////////////////////////////////////////
+        //                                  PHYSIC
 
-        //                                             UPDATE DELTA TIME
-
-        //=================================================================================================================
+        //-------------------------------------------------------------------------------
+        // UPDATE DELTA TIME
         
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            delta_time = std::chrono::high_resolution_clock::now() - previousTime;
-            previousTime = std::chrono::high_resolution_clock::now(); 
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
-        //=================================================================================================================
-
-        //                              PHYSIC UPDATE: Rigidbodies numeric integration
-        
-        //=================================================================================================================
-        
-        // DESCRIPTION:
-        // Update all rigidbodies data inside "world_rigidbodies_2d_box"
+        delta_time = std::chrono::high_resolution_clock::now() - previousTime;
+        previousTime = std::chrono::high_resolution_clock::now(); 
+      
+        //-------------------------------------------------------------------------------
+        // PHYSIC UPDATE: Rigidbodies numeric integration
+        // Aggiorna i rigidbody di ogni gameobject
         
         if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run)
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        { 
             
             for( auto& box_go : game_data::boxGameobjects){
                 physic::dim2::numeric_integration(box_go.rb, delta_time.count(), 0, 0, 0);
@@ -411,27 +341,19 @@ int main(void){
                 physic::dim2::numeric_integration(sphere_go.rb, delta_time.count(), 0, 0, 0);
             }
     
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        } 
        
-        //=================================================================================================================
-
-        //                                  PHYSIC UPDATE: Generate contact data
+        //-------------------------------------------------------------------------------
+        // PHYSIC UPDATE: Generate contact data
+        // Dispatch the collision tests and populate the contacts vector
         
-        //=================================================================================================================
-
         if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run)
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        { 
 
-            // ====================================================================================
             // Reset contact vector from eventual unresolved contacts from previous frame
-            
             physic::dim2::contacts.clear();
 
-            // ====================================================================================
-            // Dispatch the collision tests and populate the contacts vector
-
             // BOX-BOX DISPATCH: with naive algorithm
-
             if(game_data::boxGameobjects.size() != 0){
                 for(int i = 0; i < game_data::boxGameobjects.size()-1; i ++){
                     for(int j = i+1; j < game_data::boxGameobjects.size(); j++){
@@ -439,7 +361,13 @@ int main(void){
                         game_data::BoxGameObject& boxA = game_data::boxGameobjects[i];
                         game_data::BoxGameObject& boxB = game_data::boxGameobjects[j];
 
-                        physic::dim2::contact_data new_contact = physic::dim2::generate_boxbox_contactdata_naive_alg(boxA.rb, boxB.rb, boxA.coll, boxB.coll);
+                        physic::dim2::contact_data new_contact = 
+                            physic::dim2::generate_boxbox_contactdata_naive_alg(
+                                boxA.rb, 
+                                boxB.rb, 
+                                boxA.coll, 
+                                boxB.coll
+                            );
 
                         if (new_contact.pen > 0){
                             physic::dim2::contacts.push_back(new_contact);
@@ -449,7 +377,6 @@ int main(void){
             }
    
             // SPHERE-SPHERE DISPATCH
-
             if(game_data::sphereGameobjects.size() != 0){
                 for(int i = 0; i < game_data::sphereGameobjects.size()-1; i ++){
                     for(int j = i+1; j < game_data::sphereGameobjects.size(); j++){
@@ -457,7 +384,13 @@ int main(void){
                         game_data::SphereGameObject& sphereA = game_data::sphereGameobjects[i];
                         game_data::SphereGameObject& sphereB = game_data::sphereGameobjects[j];
 
-                        physic::dim2::contact_data new_contact = physic::dim2::generate_spheresphere_contactdata_norotation(sphereA.rb, sphereB.rb, sphereA.coll, sphereB.coll);
+                        physic::dim2::contact_data new_contact = 
+                            physic::dim2::generate_spheresphere_contactdata_norotation(
+                                sphereA.rb, 
+                                sphereB.rb, 
+                                sphereA.coll, 
+                                sphereB.coll
+                                );
 
                         if (new_contact.pen > 0){
                             physic::dim2::contacts.push_back(new_contact);
@@ -467,7 +400,6 @@ int main(void){
             }
 
             // BOX-SPHERE DISPATCH
-
             if(game_data::boxGameobjects.size() != 0 && game_data::sphereGameobjects.size() != 0){
                 for(int i = 0; i < game_data::boxGameobjects.size(); i++){
                     for(int j = 0; j < game_data::sphereGameobjects.size(); j++){
@@ -475,7 +407,12 @@ int main(void){
                         game_data::BoxGameObject& box = game_data::boxGameobjects[i];
                         game_data::SphereGameObject& sphere = game_data::sphereGameobjects[j];
 
-                        physic::dim2::contact_data new_contact = physic::dim2::generate_spherebox_contactdata_norotation(sphere.rb, box.rb, sphere.coll, box.coll);
+                        physic::dim2::contact_data new_contact = 
+                            physic::dim2::generate_spherebox_contactdata_norotation(
+                                sphere.rb, 
+                                box.rb, 
+                                sphere.coll, 
+                                box.coll);
 
                         if (new_contact.pen > 0){
                             physic::dim2::contacts.push_back(new_contact);
@@ -486,7 +423,6 @@ int main(void){
             } 
 
             // BOX-HALFSPACE DISPATCH
-
             if(game_data::boxGameobjects.size() != 0 && game_data::halfSpaceGameobjects.size() != 0){
                 for(int i = 0; i < game_data::boxGameobjects.size(); i ++){
                     for(int j = 0; j < game_data::halfSpaceGameobjects.size(); j++){
@@ -494,7 +430,11 @@ int main(void){
                         game_data::BoxGameObject& box = game_data::boxGameobjects[i];
                         game_data::HalfSpaceGameObject& halfspace = game_data::halfSpaceGameobjects[j];
 
-                        physic::dim2::contact_data new_contact = physic::dim2::generate_boxhalfspace_contactdata(box.rb, box.coll, halfspace.coll);
+                        physic::dim2::contact_data new_contact = 
+                            physic::dim2::generate_boxhalfspace_contactdata(
+                                box.rb, 
+                                box.coll, 
+                                halfspace.coll);
 
                         if (new_contact.pen > 0){
                             physic::dim2::contacts.push_back(new_contact);
@@ -504,7 +444,6 @@ int main(void){
             }
 
             // SPHERE-HALFSPACE DISPATCH
-
             if ( game_data::sphereGameobjects.size() != 0 && game_data::halfSpaceGameobjects.size() != 0)
             {
                 for(int i = 0; i < game_data::sphereGameobjects.size(); i++){
@@ -513,7 +452,11 @@ int main(void){
                         game_data::SphereGameObject& sphere = game_data::sphereGameobjects[i];
                         game_data::HalfSpaceGameObject& halfspace = game_data::halfSpaceGameobjects[j];
 
-                        physic::dim2::contact_data new_contact = physic::dim2::generate_spherehalfspace_contactdata(sphere.rb, sphere.coll, halfspace.coll);
+                        physic::dim2::contact_data new_contact = 
+                            physic::dim2::generate_spherehalfspace_contactdata(
+                                sphere.rb, 
+                                sphere.coll, 
+                                halfspace.coll);
 
                         if (new_contact.pen > 0){
                             physic::dim2::contacts.push_back(new_contact);
@@ -523,173 +466,151 @@ int main(void){
                 }
             }
 
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //=================================================================================================================
+        } 
 
-        //                                  PHYSIC UPDATE: Solve contact data
-
-        //=================================================================================================================
+        //-------------------------------------------------------------------------------
+        // PHYSIC UPDATE: Solve contact data
 
         if ( inputs::simulation_run_frame_button == inputs::PRESS || simulation_run)
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            physic::dim2::contact_solver_dispatcher();    
 
-            physic::dim2::contact_solver_dispatcher();
-                
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
-        //=================================================================================================================
-
-        //                              UPDATE GAMEOBJECT TRANSFORMS WITH RIGIDBODY DATA
-
-        //=================================================================================================================
-        
-        // DESCRIPTION:
+        //-------------------------------------------------------------------------------
+        // UPDATE GAMEOBJECT TRANSFORMS WITH RIGIDBODY DATA
         // Update each gameobject transform with the data inside their rigidbody
-        
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            // BOX GAMEOBJECTS
-            for( auto& box_go : game_data::boxGameobjects ) {
-                box_go.world_x_pos = box_go.rb.pos_x;
-                box_go.world_y_pos = box_go.rb.pos_y;
-                box_go.world_z_angle = box_go.rb.angle;
-            }
+        // BOX GAMEOBJECTS
+        for( auto& box_go : game_data::boxGameobjects ) {
+            box_go.world_x_pos = box_go.rb.pos_x;
+            box_go.world_y_pos = box_go.rb.pos_y;
+            box_go.world_z_angle = box_go.rb.angle;
+        }
 
-            // SPHERE GAMEOBJECTS
-            for( auto& sphere_go : game_data::sphereGameobjects ) {
-                sphere_go.world_x_pos = sphere_go.rb.pos_x;
-                sphere_go.world_y_pos = sphere_go.rb.pos_y;
-                sphere_go.world_z_angle = sphere_go.rb.angle;
+        // SPHERE GAMEOBJECTS
+        for( auto& sphere_go : game_data::sphereGameobjects ) {
+            sphere_go.world_x_pos = sphere_go.rb.pos_x;
+            sphere_go.world_y_pos = sphere_go.rb.pos_y;
+            sphere_go.world_z_angle = sphere_go.rb.angle;
 
-                // Forcefully set rotation to 0 (Fix: 24-10-12 11:20)
-                sphere_go.rb.w = 0;
-            }
+            // Forcefully set rotation to 0 (Fix: 24-10-12 11:20)
+            sphere_go.rb.w = 0;
+        }
 
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////
+        //                               POST LOGIC
 
-        //=================================================================================================================
-
-        //                                          UPDATE DEBUG FRAME LOGS
-
-        //=================================================================================================================
-        
-        // DESCRIPTION:
+        //-------------------------------------------------------------------------------
+        // UPDATE DEBUG FRAME LOGS        
         // Aggiorna i buffer contenenti i dati dello stato di gioco degli ultimi n_frames.
 
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-            if(simulation_run == true && halt_condition == false){
-                physic::dim2::UpdateFrameCollisionLogs();
-                game_data::UpdateFrameStates();
-            }
+        if(simulation_run == true && halt_condition == false){
+            physic::dim2::UpdateFrameCollisionLogs();
+            game_data::UpdateFrameStates();
+        }
            
-
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //-------------------------------------------------------------------------------
+        // MANAGE DRAGGING EVENT
+        // If the flag "event_is_dragging_active" is set, update the dragged gameobject's 
+        // transform and rigidbody data with the world mouse position.
         
-        //=================================================================================================================
+        if(game_data::event_is_dragging_active){
 
-        //                                         MANAGE DRAGGING EVENT
-
-        //=================================================================================================================
-        
-        // DESCRIPTION:
-        // If the flag "event_is_dragging_active" is set, update the dragged gameobject's transform and rigidbody data 
-        // with the world mouse position.
-        
-        { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            if(game_data::event_is_dragging_active){
-
-                // On first dragging frame, setup the renderer to highlight 
-                if (inputs::mouse_left_button == inputs::PRESS) {
-                    *game_data::draggedGameObject.render_outline = true;
-                }
-
-                // If mouse is released, remove event dragging and remove the highlight
-                if (inputs::mouse_left_button == inputs::RELEASE) {
-                    *game_data::draggedGameObject.render_outline = false;
-                    game_data::event_is_dragging_active = false;
-                }
-                
-                // Update the dragged game object while holding the left mouse button
-                if (inputs::mouse_left_button == inputs::HOLD | inputs::mouse_left_button == inputs::PRESS) {
-                    
-                    double curr_cursor_ndc_x, curr_cursor_ndc_y;
-                    float curr_cursor_world_x, curr_cursor_world_y;
-
-                    // Calculate mouse cursor position from pixel application coordinates to world coordinates
-                    inputs::convert_screen_pixel_coords_to_ndc(
-                        curr_cursor_ndc_x, curr_cursor_ndc_y,
-                        inputs::mouse_cursor_position.pixel_x_pos, inputs::mouse_cursor_position.pixel_y_pos
-                    );
-                    inputs::convert_ndc_coords_to_world(
-                        curr_cursor_world_x, curr_cursor_world_y,
-                        curr_cursor_ndc_x, curr_cursor_ndc_y
-                    );
-
-                    // Update the box gameobject positional data with the current cursor world position                
-
-                    *game_data::draggedGameObject.world_x_pos = curr_cursor_world_x;
-                    *game_data::draggedGameObject.world_y_pos = curr_cursor_world_y;
-                    game_data::draggedGameObject.rb->pos_x = curr_cursor_world_x;
-                    game_data::draggedGameObject.rb->pos_y = curr_cursor_world_y;                 
-                }
+            // On first dragging frame, setup the renderer to highlight 
+            if (inputs::mouse_left_button == inputs::PRESS) {
+                *game_data::draggedGameObject.render_outline = true;
             }
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
-        //=================================================================================================================
 
-        //                                     SETUP GAMESCENE-FRAMEBUFFER 
+            // If mouse is released, remove event dragging and remove the highlight
+            if (inputs::mouse_left_button == inputs::RELEASE) {
+                *game_data::draggedGameObject.render_outline = false;
+                game_data::event_is_dragging_active = false;
+            }
+            
+            // Update the dragged game object while holding the left mouse button
+            if ( 
+                inputs::mouse_left_button == inputs::HOLD | 
+                inputs::mouse_left_button == inputs::PRESS
+            ) {
+                
+                double curr_cursor_ndc_x, curr_cursor_ndc_y;
+                float curr_cursor_world_x, curr_cursor_world_y;
 
-        //=================================================================================================================
+                // Calculate mouse cursor position from pixel application coordinates
+                // to world coordinates
+                inputs::convert_screen_pixel_coords_to_ndc(
+                    curr_cursor_ndc_x, curr_cursor_ndc_y,
+                    inputs::mouse_cursor_position.pixel_x_pos, inputs::mouse_cursor_position.pixel_y_pos
+                );
+                inputs::convert_ndc_coords_to_world(
+                    curr_cursor_world_x, curr_cursor_world_y,
+                    curr_cursor_ndc_x, curr_cursor_ndc_y
+                );
 
-        // DESCRIPTIONS:
-        // After this setup, calls to the "Draw" functions renders on the selected framebuffer instead of the default one 
-        
-        { 
-            // ====================================================================================
-            //                              Setup rendering frame
-            // ====================================================================================
-            // Update the game scene framebuffer
+                // Update the box gameobject positional data with the current cursor 
+                //world position                
 
-            // Ridimensiona la texutre in cui è renderizzata la scena in base alla dimensione dell'elemento
-            // Image della gui in cui verrà successivamente applicata.
-            rendering::scene_image_framebuffer::set_texture_size(
-                gui::parameters.scene_window.inner_img_pixel_width,
-                gui::parameters.scene_window.inner_img_pixel_height
-            );
+                *game_data::draggedGameObject.world_x_pos = curr_cursor_world_x;
+                *game_data::draggedGameObject.world_y_pos = curr_cursor_world_y;
+                game_data::draggedGameObject.rb->pos_x = curr_cursor_world_x;
+                game_data::draggedGameObject.rb->pos_y = curr_cursor_world_y;                 
+            }
+        }
+      
+        /////////////////////////////////////////////////////////////////////////////////
+        //                                  RENDERING
 
-            rendering::scene_image_framebuffer::activate();
+        //===============================================================================
+        // GAMESCENE-FRAMEBUFFER RENDERING
 
-            // Setuppa i parametri del viewport della scena di gioco
-            rendering::game_scene_viewport.pixel_width = gui::parameters.scene_window.inner_img_pixel_width;
-            rendering::game_scene_viewport.pixel_height = gui::parameters.scene_window.inner_img_pixel_height;
-            rendering::game_scene_viewport.ratio =
-                rendering::game_scene_viewport.pixel_width / ((float) rendering::game_scene_viewport.pixel_height);
+        //-------------------------------------------------------------------------------
+        // SETUP GAMESCENE-FRAMEBUFFER 
+        // Fa il setup del framebuffer in cui è renderizzata la scena 
+        // (scene_image_framebuffer); dopo il setup, chiamate alle funzioni di rendering 
+        // andranno in output su questo framebuffer piuttosto che quello di default 
+        // (client window)
 
-            // Specifica ad opengl la dimensione del canvas dove renderizzare
-            // (Sostanzialmente si specifica come associare i pixel del monitor in cui si visualizza il gioco
-            // con i pixel del framebuffer in cui è contenuto l'output delle operazioni di rendering) 
-            glViewport(
-                0,              
-                0, 
-                rendering::game_scene_viewport.pixel_width, 
-                rendering::game_scene_viewport.pixel_height);
+        // La scena è renderizzata su una texture la quale è successivamente applicata 
+        // in una window della gui (scene_window).
+        // E' dunque necessario dimensionare la texture con la stessa grandezza di 
+        // questa window. 
+        rendering::scene_image_framebuffer::set_texture_size(
+            gui::parameters.scene_window.inner_img_pixel_width,
+            gui::parameters.scene_window.inner_img_pixel_height
+        );
 
-            glEnable(GL_DEPTH_TEST); 
+        rendering::scene_image_framebuffer::activate();
 
-            // Remove the old image from tehe framebuffer:
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // Setuppa i parametri del viewport della scena di gioco
+        rendering::game_scene_viewport.pixel_width = gui::parameters.scene_window.inner_img_pixel_width;
+        rendering::game_scene_viewport.pixel_height = gui::parameters.scene_window.inner_img_pixel_height;
+        rendering::game_scene_viewport.ratio =
+            rendering::game_scene_viewport.pixel_width / ((float) rendering::game_scene_viewport.pixel_height);
 
-            // ====================================================================================
-            // Update the rendering Camera parameters
+        // Specifica come associare i pixel del monitor in cui si visualizza il gioco
+        // con i pixel del framebuffer in cui è contenuto l'output delle operazioni di 
+        // rendering.
+        // (Sostanzialmente specifica l'area del framebuffer da renderizzare)
+        glViewport(
+            0,              
+            0, 
+            rendering::game_scene_viewport.pixel_width, 
+            rendering::game_scene_viewport.pixel_height);
 
-            // Imposta la width della camera di gioco in modo che ciò che cattura nel game world rifletta 
-            // il rapporto con cui viene mostrata sullo schermo
-            rendering::camera.world_width_fov = rendering::game_scene_viewport.ratio * rendering::camera.world_height_fov;
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
-        //=================================================================================================================
-        // Render Box Gameobjects
+        glEnable(GL_DEPTH_TEST); 
+
+        // Remove the old image from tehe framebuffer:
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        //-------------------------------------------------------------------------------
+        // Update the rendering Camera parameters
+
+        // Imposta la width della camera di gioco in modo che ciò che cattura nel game 
+        // world rifletta il rapporto con cui viene mostrata sullo schermo
+        rendering::camera.world_width_fov 
+            = rendering::game_scene_viewport.ratio * rendering::camera.world_height_fov;
+    
+        //-------------------------------------------------------------------------------
+        // RENDERING: Render Box Gameobjects
         { 
 
             // Setup the shader
@@ -720,31 +641,19 @@ int main(void){
 
         } 
         
-        //=================================================================================================================
-
-        //                                  RENDERING: Render Sphere Gameobjects
-
-        //=================================================================================================================
-        
-        // DESCRIPTION:
-        // Renders data inside game_data::world_gameobjects_box using debugsphere shader
-    
+        //-------------------------------------------------------------------------------
+        // RENDERING: Render Sphere Gameobjects
         { 
-            // ====================================================================================
+            
             // Setup the shader
-
             glUseProgram(rendering::shader_debugsphere::program_id);
             glBindVertexArray(rendering::shader_debugsphere::quad_mesh.meta_data_buffer_id);
             
-
             // Setup the uniforms
             rendering::shader_debugsphere::set_uniform_screen_width_ratio(rendering::game_scene_viewport.ratio);
 
-            // ====================================================================================
             // Iterate over all spheres data and render them
-
             float mvp [16];
-
             for ( auto& sphere_go : game_data::sphereGameobjects ) {
 
                 // Calculate MVP based on box transform
@@ -766,20 +675,11 @@ int main(void){
             }
 
             glDisable(GL_DEPTH_TEST); 
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        } 
 
-        //=================================================================================================================
-
-        //                                   RENDERING: Render Halfspaces Gameobjects
-
-        //=================================================================================================================
-        
-        // DESCRIPTION:
-        // Renders data inside game_data::world_gameobjects_box using debugline shader
-        
-        { 
-            // Renders visually the data inside the physic::dim2::contacts vector 
-                           
+        //-------------------------------------------------------------------------------
+        // RENDERING: Render Halfspaces Gameobjects
+        {                            
             glUseProgram(rendering::debugline_shader::program_id);
             glBindVertexArray(rendering::debugline_shader::vertex_attributes_buffer.gpu_pointers_buffer_id);
 
@@ -797,7 +697,12 @@ int main(void){
                     halfspace_pos_x,
                     halfspace_pos_y,
                     0,
-                    {halfspace_direction_x * 100, halfspace_direction_y * 100, halfspace_direction_x * -100, halfspace_direction_y * -100}
+                    {   
+                        halfspace_direction_x * 100, 
+                        halfspace_direction_y * 100, 
+                        halfspace_direction_x * -100, 
+                        halfspace_direction_y * -100
+                    }
                 );
 
                 // Render the normal (applied on QB)
@@ -810,23 +715,14 @@ int main(void){
             
             }
 
-            
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        }
         
-        //=================================================================================================================
-        
-        //                        RENDERING: Render Contact data informations (Contact ponts and normals)
+        //--------------------------------------------------------------------------------------------------------------
+        // RENDERING: Render Contact data informations (Contact ponts and normals)
 
-        //=================================================================================================================
-        
-        // DESCRIPTION:
-        // Renders data inside physic::dim2::contacts vector using debugline_shader
-        
         if( game_data::debug_draw_contact_data )
         { 
-            
-            // Renders visually the data inside the physic::dim2::contacts vector 
-                           
+                
             glUseProgram(rendering::debugline_shader::program_id);
             glBindVertexArray(rendering::debugline_shader::vertex_attributes_buffer.gpu_pointers_buffer_id);
 
@@ -834,13 +730,23 @@ int main(void){
 
                 // Find QA world contact coordinates
                 mat4x4 model_matrix;
-                physic::dim2::build_model_matrix(model_matrix, contact.rb_a->pos_x, contact.rb_a->pos_y, contact.rb_a->angle );
+                physic::dim2::build_model_matrix(
+                    model_matrix, 
+                    contact.rb_a->pos_x, 
+                    contact.rb_a->pos_y, 
+                    contact.rb_a->angle 
+                );
                 vec4 world_qa;
                 vec4 local_qa = {contact.ms_qa_x, contact.ms_qa_y, 0, 1};
                 mat4x4_mul_vec4(world_qa, model_matrix, local_qa);
 
                 // Find QB world contact coordinates
-                physic::dim2::build_model_matrix(model_matrix, contact.rb_b->pos_x, contact.rb_b->pos_y, contact.rb_b->angle );
+                physic::dim2::build_model_matrix(
+                    model_matrix, 
+                    contact.rb_b->pos_x, 
+                    contact.rb_b->pos_y, 
+                    contact.rb_b->angle 
+                );
                 vec4 world_qb;
                 vec4 local_qb= {contact.ms_qb_x, contact.ms_qb_y, 0, 1};
                 mat4x4_mul_vec4(world_qb, model_matrix, local_qb);
@@ -860,16 +766,11 @@ int main(void){
                     {0, 0, contact.ws_n_x, contact.ws_n_y}
                 );
             
-            }
-
-            
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            }  
+        } 
         
-        //=================================================================================================================
-
-        //                                RENDERING: Render Impulse circles
-
-        //=================================================================================================================
+        //--------------------------------------------------------------------------------------------------------------
+        // RENDERING: Render Impulse circles
         
         if ( game_data::debug_draw_impulses )
         { 
@@ -883,7 +784,12 @@ int main(void){
 
                 // Find QB world contact coordinates
                 mat4x4 model_matrix;
-                physic::dim2::build_model_matrix(model_matrix, contact.rb_b->pos_x, contact.rb_b->pos_y, contact.rb_b->angle );
+                physic::dim2::build_model_matrix(
+                    model_matrix, 
+                    contact.rb_b->pos_x, 
+                    contact.rb_b->pos_y, 
+                    contact.rb_b->angle 
+                );
                 vec4 world_qb;
                 vec4 local_qb= {contact.ms_qb_x, contact.ms_qb_y, 0, 1};
                 mat4x4_mul_vec4(world_qb, model_matrix, local_qb);
@@ -936,35 +842,26 @@ int main(void){
 
             }
             
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        }
         
-        //=================================================================================================================
-
-        //                                     RELEASE GAMESCENE-FRAMEBUFFER
-
-        //=================================================================================================================
+        //-------------------------------------------------------------------------------
+        // RELEASE GAMESCENE-FRAMEBUFFER
         
-        // DESCRIPTION: Disattiva il framebuffer precedente per non rischiare di renderizzarci altre cose sopra dalle
-        // future chiamate alle funzioni di draw
+        // Disattiva il framebuffer precedente per non rischiare di renderizzarci altre 
+        // cose sopra dalle future chiamate alle funzioni di draw
+        glUseProgram(0);
+        rendering::scene_image_framebuffer::deactivate();
+        
+        
+        //===============================================================================
+        // DEFAULT-FRAMEBUFFER RENDERING
 
+        //-------------------------------------------------------------------------------
+        // SETUP DEFAULT-FRAMEBUFFER
+        // Setuppa il framebuffer di default, ovvero predispone il rendering nella window
+        // principale della applicazione.
         { 
-            glUseProgram(0);
-            rendering::scene_image_framebuffer::deactivate();
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
-        //=================================================================================================================
-
-        //                                        SETUP DEFAULT-FRAMEBUFFER
-
-        //=================================================================================================================
-
-        // DESCRIPTION: Setuppa il framebuffer di default, ovvero predispone il rendering nella window principale della
-        // applicazione
-
-        { 
-            // ====================================================================================
-            // Setup the application Framebuffer
-            
+      
             // Scrivi in game_scene_viewport la grandezza della finestra dell'applicazione
             glfwGetFramebufferSize(
                 window, 
@@ -985,80 +882,69 @@ int main(void){
 
             glClear(GL_COLOR_BUFFER_BIT);
             
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        }
 
-        //=================================================================================================================
+        //-------------------------------------------------------------------------------
+        // RENDERING: Render the editor gui        
+ 
+        // Render the GUI in the application Framebuffer
+        gui::render_gui();
 
-        //                                      RENDERING: Render the editor gui
+        //-------------------------------------------------------------------------------
+        //  RELEASE DEFAULT-FRAMEBUFFER
 
-        //=================================================================================================================
+        // Flush application window rendering changes
+        glfwSwapBuffers(window);
+        glfwPollEvents();
         
-        { 
+        /////////////////////////////////////////////////////////////////////////////////
+        //                                 FRAME DEBUG
 
-            // ====================================================================================
-            // Render the GUI in the application Framebuffer
-
-            gui::render_gui();
-
-
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        //=================================================================================================================
-
-        //                                        RELEASE DEFAULT-FRAMEBUFFER
-
-        //=================================================================================================================
-
-        { 
-            // ====================================================================================
-            // Flush application window rendering changes
-
-            glfwSwapBuffers(window);
-            glfwPollEvents();
-
-        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
-        //=================================================================================================================
-
+        //-------------------------------------------------------------------------------
         //                                         CONSOLE COUT: PRINT STATE
 
-        //=================================================================================================================
-        
-        { ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            //if (inputs::mouse_left_button == inputs::PRESS) {
-                //std::cout << "Scene Image position: " << gui::parameters.scene_window.inner_img_pixel_x_pos << " " << gui::parameters.scene_window.inner_img_pixel_y_pos << std::endl << std::flush;
-                //std::cout << "Click pixel position: " << inputs::mouse_last_click.pixel_x_pos << " " << inputs::mouse_last_click.pixel_y_pos << std::endl << std::flush;
-                //std::cout << "Click ndc position: " << inputs::mouse_last_click.ndc_x_pos << " " << inputs::mouse_last_click.ndc_y_pos << std::endl << std::flush;
-                //std::cout << "Click world position: " << inputs::mouse_last_click.world_x_pos << " " << inputs::mouse_last_click.world_y_pos << std::endl << std::flush; 
-        } ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
-        
-        //=================================================================================================================
-        
-        //                                              MAIN LOOP END
-        
-        //=================================================================================================================
+        //if (inputs::mouse_left_button == inputs::PRESS) {
+            
+            //std::cout << "Scene Image position: " 
+            //  << gui::parameters.scene_window.inner_img_pixel_x_pos 
+            //  << " " << gui::parameters.scene_window.inner_img_pixel_y_pos 
+            //  << std::endl << std::flush;
 
-    }
+            //std::cout << "Click pixel position: " 
+            //  << inputs::mouse_last_click.pixel_x_pos 
+            //  << " " << inputs::mouse_last_click.pixel_y_pos 
+            //  << std::endl << std::flush;
+            
+            //std::cout << "Click ndc position: " 
+            //  << inputs::mouse_last_click.ndc_x_pos 
+            //  << " " << inputs::mouse_last_click.ndc_y_pos 
+            //  << std::endl << std::flush;
+            
+            //std::cout << "Click world position: " 
+            //  << inputs::mouse_last_click.world_x_pos 
+            //  << " " << inputs::mouse_last_click.world_y_pos 
+            //  << std::endl << std::flush; 
+        
+    } // MAIN LOOP END []
 
-    //=================================================================================================================
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                              APPLICATION EXIT
 
-    //                                              RELEASE RESOURCES
-
-    //=================================================================================================================
+    //--------------------------------------------------------------------------------------------------------------
+    // RELEASE RESOURCES
     
-    { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        gui::destroy();
+    gui::destroy();
 
-        glfwDestroyWindow(window);
-    
-        glfwTerminate();
-        exit(EXIT_SUCCESS);
-        
-    } /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    glfwDestroyWindow(window);
+
+    glfwTerminate();
+    exit(EXIT_SUCCESS);
 
     return 0;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                UTILS FUNCTIONS
 
 void print_GameStateLog(){
     
